@@ -19,6 +19,7 @@
 | --- | --- |
 | Board | NUCLEO-C031C6 |
 | MCU | STM32C031C6 (Arm Cortex-M0+) |
+| Tool | STM32CubeMX |
 | IDE | STM32CubeIDE |
 | Library | STM32 HAL |
 | Language | C |
