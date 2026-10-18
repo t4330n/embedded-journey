@@ -1,0 +1,21 @@
+# STM32CubeIDE 빌드 결과물
+Debug/
+Release/
+*.o
+*.d
+*.su
+*.cyclo
+*.elf
+*.map
+*.list
+*.bin
+*.hex
+
+# IDE 개인 설정
+.metadata/
+.settings/
+*.launch
+
+# OS
+.DS_Store
+Thumbs.db
