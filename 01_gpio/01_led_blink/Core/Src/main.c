@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stm32c0xx_ll_gpio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,7 +31,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define BLINK_METHOD 4   // 1: HAL, 2: 레지스터(ODR), 3: 레지스터(BSRR), 4: LL
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -95,7 +95,19 @@ int main(void) {
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
+#if   BLINK_METHOD == 1   /* HAL */
 		HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
+#elif BLINK_METHOD == 2   /* 레지스터: ODR 5번 비트 XOR */
+    GPIOA->ODR ^= (1U << 5);
+#elif BLINK_METHOD == 3   /* 레지스터: BSRR로 켜기/끄기 */
+    if (GPIOA->ODR & (1U << 5)) {
+        GPIOA->BSRR = (1U << 21);   // PA5 끄기
+    } else {
+        GPIOA->BSRR = (1U << 5);    // PA5 켜기
+    }
+#elif BLINK_METHOD == 4   /* LL */
+		LL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
+#endif
 		HAL_Delay(500);
 	}
 	/* USER CODE END 3 */
