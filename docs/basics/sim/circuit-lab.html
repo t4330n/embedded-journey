@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>물탱크 회로 실험실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+/* Layout: 짧은 머리말 → 조절판 → [물 그림 | 회로 그림] 나란히(좁으면 위아래) → 계산 줄 → 미션 → "어디가 뭐예요?" */
+:root{
+  --bg:#EEF3F5; --panel:#FFFFFF; --fg:#16222C; --muted:#5A6B77; --line:#CCD7DE;
+  --water:#2B78C9; --water-soft:#CFE3F6; --copper:#B8622A; --led:#22A856; --led-glow:#7EF0A6;
+  --warn:#C9781F; --danger:#CF3F3F; --ok:#1E8E57; --chip:#E4ECF0;
+  --f-display:"Jua","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E161C; --panel:#152029; --fg:#E3EBF0; --muted:#8FA2AF; --line:#2A3B47;
+  --water:#4B9BEA; --water-soft:#1C3550; --copper:#E08A4C; --led:#34D97A; --led-glow:#9CFFC0;
+  --warn:#E89A3D; --danger:#F06161; --ok:#3CC985; --chip:#1E2C37; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0E161C; --panel:#152029; --fg:#E3EBF0; --muted:#8FA2AF; --line:#2A3B47;
+  --water:#4B9BEA; --water-soft:#1C3550; --copper:#E08A4C; --led:#34D97A; --led-glow:#9CFFC0;
+  --warn:#E89A3D; --danger:#F06161; --ok:#3CC985; --chip:#1E2C37; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:1080px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 10px;text-wrap:balance}
+.lead{margin:6px 0 0;color:var(--muted);max-width:62ch}
+.controls{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px 24px;align-items:end}
+.ctl{display:grid;gap:6px;min-width:0}
+.ctl label{font-weight:600;font-size:14px;display:flex;justify-content:space-between;gap:8px}
+.ctl label output{font-family:var(--f-mono);font-weight:500;color:var(--fg)}
+.ctl small{color:var(--muted);font-size:12.5px}
+input[type=range]{width:100%;accent-color:var(--water)}
+#r{accent-color:var(--copper)}
+.toggles{display:flex;flex-wrap:wrap;gap:10px}
+.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--chip);color:var(--fg);border-radius:10px;padding:9px 14px;cursor:pointer;user-select:none;-webkit-user-select:none}
+.btn[aria-pressed="true"]{background:var(--fg);color:var(--panel);border-color:var(--fg)}
+.btn:focus-visible,input:focus-visible{outline:3px solid var(--water);outline-offset:2px}
+.btn.ghost{background:transparent}
+.stage{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.stage{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
+.card h2{font-size:19px;margin-bottom:4px}
+.card .sub{color:var(--muted);font-size:13px;margin:0 0 8px}
+canvas{display:block;width:100%;height:270px}
+svg.circuit{display:block;width:100%;height:auto;max-height:290px}
+.readout{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:10px}
+.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.num{display:grid;gap:2px;padding:8px 10px;border-radius:10px;background:var(--chip)}
+.num span{font-size:12.5px;color:var(--muted)}
+.num b{font-family:var(--f-mono);font-weight:500;font-size:20px;font-variant-numeric:tabular-nums}
+.num.v b{color:var(--water)} .num.r b{color:var(--copper)} .num.i b{color:var(--led)}
+.formula{font-family:var(--f-mono);font-size:14px;overflow-x:auto;white-space:nowrap;padding:8px 10px;border-radius:10px;border:1px dashed var(--line)}
+.status{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--chip)}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--warn)} .pill.danger{color:var(--danger)} .pill.off{color:var(--muted)}
+.missions ol{margin:0;padding:0;list-style:none;display:grid;gap:8px;counter-reset:m}
+.missions li{counter-increment:m;display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:start;padding:10px 12px;border-radius:10px;background:var(--chip)}
+.missions li::before{content:counter(m);font-family:var(--f-display);font-size:18px;line-height:1.4;text-align:center;color:var(--muted)}
+.missions li .tag{font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.missions li.done{background:transparent;border:1px solid var(--ok)}
+.missions li.done .tag{color:var(--ok)}
+.missions li p{margin:0}
+.missions li .hint{color:var(--muted);font-size:13px}
+.what{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.what div{padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel)}
+.what h3{margin:0 0 4px;font-size:16px}
+.what p{margin:0;color:var(--muted);font-size:14px}
+.what .k{font-family:var(--f-display);font-weight:400;font-size:18px}
+.k.v{color:var(--water)} .k.r{color:var(--copper)} .k.i{color:var(--led)}
+.note{color:var(--muted);font-size:12.5px;margin:0}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>물탱크 회로 실험실</h1>
+    <p class="lead">전압과 저항을 바꾸면서, 왼쪽 <b>물</b>과 오른쪽 <b>회로</b>가 똑같이 움직이는 걸 확인해 보세요. 점이 움직이는 빠르기가 곧 <b>전류</b>예요.</p>
+  </header>
+
+  <section class="controls" aria-label="조절판">
+    <div class="ctl">
+      <label for="v">전압 (물 높이) <output id="vOut">3.3 V</output></label>
+      <input id="v" type="range" min="0" max="5" step="0.1" value="3.3">
+      <small>우리 칩은 3.3V, USB는 5V예요</small>
+    </div>
+    <div class="ctl">
+      <label for="r">저항 (관의 좁기) <output id="rOut">1.0 kΩ</output></label>
+      <input id="r" type="range" min="0" max="1000" step="1" value="0">
+      <small>오른쪽으로 갈수록 관이 좁아져요 (47Ω ~ 10kΩ)</small>
+    </div>
+    <div class="ctl">
+      <span style="font-weight:600;font-size:14px">스위치와 부품</span>
+      <div class="toggles">
+        <button class="btn" id="sw" type="button" aria-pressed="true">버튼 눌림 (길 이어짐)</button>
+        <button class="btn" id="ledBtn" type="button" aria-pressed="true">LED 있음</button>
+        <button class="btn ghost" id="reset" type="button">처음으로</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="stage">
+    <div class="card">
+      <h2>물로 보면</h2>
+      <p class="sub">탱크 물 높이 = 전압 · 좁은 관 = 저항 · 물이 흐르는 빠르기 = 전류</p>
+      <canvas id="water" aria-label="물탱크 그림: 물 높이, 좁은 관, LED 문턱, 흐르는 물"></canvas>
+    </div>
+    <div class="card">
+      <h2>회로로 보면</h2>
+      <p class="sub">전원(+) → 버튼 → 저항 → LED → GND(−)로 이어진 길</p>
+      <svg class="circuit" id="circ" viewBox="0 0 380 250" role="img" aria-label="전원, 버튼, 저항, LED, GND로 이루어진 회로">
+        <defs>
+          <radialGradient id="glow"><stop offset="0" stop-color="var(--led-glow)" stop-opacity=".9"/><stop offset="1" stop-color="var(--led-glow)" stop-opacity="0"/></radialGradient>
+        </defs>
+        <!-- 전선 -->
+        <path id="wire" d="M60 100 V50 H320 V200 H60 V140" fill="none" stroke="var(--copper)" stroke-width="3" stroke-linejoin="round"/>
+        <!-- 전원 -->
+        <g>
+          <rect x="44" y="100" width="32" height="40" fill="var(--panel)"/>
+          <line x1="44" y1="112" x2="76" y2="112" stroke="var(--fg)" stroke-width="3"/>
+          <line x1="52" y1="126" x2="68" y2="126" stroke="var(--fg)" stroke-width="3"/>
+          <text x="84" y="116" fill="var(--fg)" font-family="var(--f-mono)" font-size="12">+</text>
+          <text x="84" y="132" fill="var(--fg)" font-family="var(--f-mono)" font-size="12">−</text>
+          <text id="vLbl" x="8" y="124" fill="var(--water)" font-family="var(--f-mono)" font-size="12">3.3V</text>
+        </g>
+        <!-- 버튼(스위치) -->
+        <g id="swG">
+          <rect x="100" y="40" width="50" height="20" fill="var(--panel)"/>
+          <circle cx="104" cy="50" r="3.5" fill="var(--fg)"/>
+          <circle cx="146" cy="50" r="3.5" fill="var(--fg)"/>
+          <line id="swArm" x1="104" y1="50" x2="146" y2="50" stroke="var(--fg)" stroke-width="3" stroke-linecap="round"/>
+          <text x="104" y="32" fill="var(--muted)" font-size="12" font-family="var(--f-body)">버튼</text>
+        </g>
+        <!-- 저항 -->
+        <g>
+          <rect x="182" y="38" width="76" height="24" fill="var(--panel)"/>
+          <polyline points="182,50 190,50 196,40 206,60 216,40 226,60 236,40 246,60 252,50 258,50" fill="none" stroke="var(--copper)" stroke-width="3" stroke-linejoin="round"/>
+          <rect id="heat" x="186" y="36" width="68" height="28" rx="6" fill="var(--danger)" opacity="0"/>
+          <text x="196" y="30" fill="var(--muted)" font-size="12" font-family="var(--f-body)">저항</text>
+          <text id="rLbl" x="198" y="80" fill="var(--copper)" font-family="var(--f-mono)" font-size="12">1.0kΩ</text>
+        </g>
+        <!-- LED -->
+        <g id="ledG">
+          <rect x="304" y="100" width="32" height="44" fill="var(--panel)"/>
+          <circle id="ledHalo" cx="320" cy="122" r="34" fill="url(#glow)" opacity="0"/>
+          <polygon id="ledTri" points="306,108 334,108 320,132" fill="var(--panel)" stroke="var(--led)" stroke-width="3" stroke-linejoin="round"/>
+          <line x1="306" y1="134" x2="334" y2="134" stroke="var(--led)" stroke-width="3"/>
+          <text x="342" y="126" fill="var(--muted)" font-size="12" font-family="var(--f-body)">LED</text>
+        </g>
+        <!-- GND -->
+        <g>
+          <line x1="190" y1="200" x2="190" y2="216" stroke="var(--fg)" stroke-width="2"/>
+          <line x1="176" y1="216" x2="204" y2="216" stroke="var(--fg)" stroke-width="2.5"/>
+          <line x1="181" y1="222" x2="199" y2="222" stroke="var(--fg)" stroke-width="2.5"/>
+          <line x1="186" y1="228" x2="194" y2="228" stroke="var(--fg)" stroke-width="2.5"/>
+          <text x="210" y="226" fill="var(--muted)" font-size="12" font-family="var(--f-body)">GND (0V 바닥)</text>
+        </g>
+        <g id="dots"></g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="readout" aria-live="polite">
+    <div class="nums">
+      <div class="num v"><span>전압 (전원)</span><b id="nV">3.3 V</b></div>
+      <div class="num r"><span>저항</span><b id="nR">1.0 kΩ</b></div>
+      <div class="num i"><span>전류</span><b id="nI">1.30 mA</b></div>
+      <div class="num"><span>저항이 맡은 전압</span><b id="nVR">1.3 V</b></div>
+    </div>
+    <div class="formula" id="formula">I = (3.3V − 2.0V) ÷ 1000Ω = 1.30 mA</div>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section class="card missions">
+    <h2>미션</h2>
+    <p class="sub">조절판을 움직여서 하나씩 성공해 보세요. 성공하면 자동으로 표시돼요.</p>
+    <ol id="missions"></ol>
+  </section>
+
+  <section>
+    <h2>어디가 뭐예요?</h2>
+    <div class="what">
+      <div>
+        <h3><span class="k r">저항</span> = 손으로 가리킬 수 있는 부품</h3>
+        <p>보드 위 <b>R</b>로 시작하는 작은 부품이에요. 물로 치면 <b>좁은 관</b>이라 눈으로 볼 수 있어요.</p>
+      </div>
+      <div>
+        <h3><span class="k v">전압</span> = 두 곳의 높이 차이</h3>
+        <p>물건이 아니라 <b>두 점 사이의 차이</b>예요. 그래서 멀티미터는 막대 <b>두 개</b>를 두 곳에 대고 재요. 물로 치면 물 높이와 바닥의 차이예요.</p>
+      </div>
+      <div>
+        <h3><span class="k i">전류</span> = 선 안에서 움직이는 흐름</h3>
+        <p>바람처럼 눈에 안 보이고, LED가 켜지는 것 같은 <b>결과</b>로 알아요. 점들은 버튼을 떼도 선 안에 그대로 있어요. 길이 이어지면 <b>다 같이 움직이기</b> 시작해요.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="note">LED 문턱(2.0V)과 위험 기준(20mA·40mA)은 이해를 돕기 위한 대략값이에요. 실제 값은 부품 설명서(데이터시트)마다 달라요. 점이 움직이는 방향은 약속으로 정한 "전류의 방향"(+ → −)이에요.</p>
+</div>
+
+<script>
+(function(){
+  const VF = 2.0;                     // LED 문턱 전압 (대략값)
+  const RMIN = 47, RMAX = 10000;
+  const $ = id => document.getElementById(id);
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const state = { V: 3.3, R: 1000, led: true, closed: true };
+  const done = {}; let burned = false;
+
+  // 저항 슬라이더(로그) ↔ 값
+  const sig2 = x => { const p = Math.pow(10, Math.floor(Math.log10(x)) - 1); return Math.round(x / p) * p; };
+  const tToR = t => sig2(RMIN * Math.pow(RMAX / RMIN, t / 1000));
+  const rToT = r => Math.round(1000 * Math.log(r / RMIN) / Math.log(RMAX / RMIN));
+  const fmtR = r => r >= 1000 ? (r / 1000).toFixed(r >= 10000 ? 0 : 1) + ' kΩ' : Math.round(r) + ' Ω';
+  const fmtRs = r => fmtR(r).replace(' ', '');
+  const fmtI = i => { const ma = i * 1000; return (ma >= 10 ? ma.toFixed(1) : ma.toFixed(2)) + ' mA'; };
+
+  function calc(){
+    const { V, R, led, closed } = state;
+    if (!closed) return { I: 0, vR: 0, vLed: 0 };
+    if (led){
+      if (V <= VF) return { I: 0, vR: 0, vLed: V };
+      return { I: (V - VF) / R, vR: V - VF, vLed: VF };
+    }
+    return { I: V / R, vR: V, vLed: 0 };
+  }
+
+  const missions = [
+    { id:'m1', text:'버튼을 떼서 길을 끊어 보세요.', hint:'전압(물 높이)은 그대로인데, 전류는 어떻게 되나요?',
+      test:(s,c)=> !s.closed && s.V >= 1 },
+    { id:'m2', text:'LED가 켜지기 직전의 전압을 찾아보세요.', hint:'LED가 있는 상태에서 전압을 1.0V~2.0V 사이로 내려 보세요. 물이 문턱을 못 넘어요.',
+      test:(s,c)=> s.led && s.closed && s.V >= 1 && s.V <= VF },
+    { id:'m3', text:'3.3V에서 LED에 약 5mA가 흐르게 저항을 골라 보세요.', hint:'압류항: 저항 = 남는 전압 1.3V ÷ 0.005A',
+      test:(s,c)=> s.led && s.closed && s.V >= 3.2 && s.V <= 3.4 && c.I >= 0.0045 && c.I <= 0.0055 },
+    { id:'m4', text:'저항을 아주 작게 해서 LED를 태워 본 뒤(40mA 넘게), 저항을 키워 다시 살려 보세요.', hint:'LED 앞의 저항이 왜 필요한지 알 수 있어요.',
+      test:(s,c)=> burned && s.led && s.closed && c.I > 0.001 && c.I <= 0.02 },
+    { id:'m5', text:'LED를 빼고 저항만 남겨서, 3.3V · 1kΩ일 때 전류를 확인해 보세요.', hint:'전압 = 전류 × 저항 → 전류 = 3.3V ÷ 1000Ω',
+      test:(s,c)=> !s.led && s.closed && s.V >= 3.2 && s.V <= 3.4 && s.R >= 900 && s.R <= 1100 },
+  ];
+  const mList = $('missions');
+  missions.forEach(m => {
+    const li = document.createElement('li'); li.id = m.id;
+    li.innerHTML = `<div><p>${m.text}</p><p class="hint">${m.hint}</p></div><span class="tag">도전 중</span>`;
+    mList.appendChild(li);
+  });
+
+  // ---------- 회로 점(전자) ----------
+  const wire = $('wire'); const dotsG = $('dots');
+  const wireLen = wire.getTotalLength();
+  const ND = 22; const dots = [];
+  for (let k = 0; k < ND; k++){
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('r','3.2'); c.setAttribute('fill','var(--water)'); dotsG.appendChild(c); dots.push(c);
+  }
+  let circOffset = 0;
+
+  // ---------- 물 캔버스 ----------
+  const cv = $('water'); const ctx = cv.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  let col = {};
+  function readColors(){ col = { bg:css('--panel'), fg:css('--fg'), muted:css('--muted'), line:css('--line'), water:css('--water'), soft:css('--water-soft'), copper:css('--copper'), led:css('--led'), glow:css('--led-glow'), danger:css('--danger') }; }
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const r = cv.getBoundingClientRect(); W = r.width; H = r.height;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  const NP = 26; const parts = Array.from({length:NP}, (_,k)=> k / NP);
+  let waterOffset = 0;
+
+  function drawWater(c){
+    const s = state;
+    ctx.clearRect(0,0,W,H);
+    const ground = H - 34, top = 26, unit = (ground - top) / 5;   // 1V 높이
+    const rulerX = 30, tankL = 46, tankR = Math.min(118, W * 0.24);
+    const pipeY = ground - 12, pipeT = 16;
+    const endX = W - 18;
+    // 눈금자
+    ctx.font = '11px ' + 'IBM Plex Mono, monospace'; ctx.fillStyle = col.muted; ctx.strokeStyle = col.line; ctx.lineWidth = 1;
+    for (let v = 0; v <= 5; v++){
+      const y = ground - v * unit;
+      ctx.beginPath(); ctx.moveTo(rulerX, y); ctx.lineTo(rulerX + 8, y); ctx.stroke();
+      ctx.fillText(v + 'V', 2, y + 4);
+    }
+    ctx.beginPath(); ctx.moveTo(rulerX + 4, top); ctx.lineTo(rulerX + 4, ground); ctx.stroke();
+    // 바닥(GND)
+    ctx.strokeStyle = col.fg; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(rulerX, ground); ctx.lineTo(W - 6, ground); ctx.stroke();
+    ctx.fillStyle = col.muted; ctx.font = '12px IBM Plex Sans KR, sans-serif';
+    ctx.fillText('GND (0V 바닥)', W - 104, ground + 20);
+    // 탱크
+    const lvl = ground - s.V * unit;
+    ctx.fillStyle = col.soft; ctx.fillRect(tankL, lvl, tankR - tankL, ground - lvl);
+    ctx.fillStyle = col.water; ctx.globalAlpha = .85; ctx.fillRect(tankL, lvl, tankR - tankL, Math.min(6, ground - lvl)); ctx.globalAlpha = 1;
+    ctx.strokeStyle = col.fg; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(tankL, top - 6); ctx.lineTo(tankL, ground); ctx.lineTo(tankR, ground); ctx.lineTo(tankR, pipeY + pipeT/2); ctx.moveTo(tankR, pipeY - pipeT/2); ctx.lineTo(tankR, top - 6); ctx.stroke();
+    // 높이 차 화살표
+    if (s.V > 0.15){
+      const ax = tankL + (tankR - tankL) / 2;
+      ctx.strokeStyle = col.water; ctx.fillStyle = col.water; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(ax, lvl + 4); ctx.lineTo(ax, ground - 4); ctx.stroke();
+      [[lvl + 4, 1], [ground - 4, -1]].forEach(([y, d]) => { ctx.beginPath(); ctx.moveTo(ax, y); ctx.lineTo(ax - 4, y + 6 * d); ctx.lineTo(ax + 4, y + 6 * d); ctx.closePath(); ctx.fill(); });
+      ctx.font = '600 12px IBM Plex Sans KR, sans-serif'; ctx.fillStyle = col.water;
+      const lbl = '높이 차 ' + s.V.toFixed(1) + 'V';
+      const ly = Math.max(top + 4, lvl - 8);
+      ctx.fillText(lbl, tankL, ly);
+    }
+    // 관 구간 계산
+    const x0 = tankR, xSw = x0 + (endX - x0) * 0.16, xR0 = x0 + (endX - x0) * 0.32, xR1 = x0 + (endX - x0) * 0.58, xLed = x0 + (endX - x0) * 0.76;
+    const tr = Math.log(s.R / RMIN) / Math.log(RMAX / RMIN);       // 0~1
+    const narrow = pipeT * (1 - tr) * 0.75 + 3;                    // 좁은 관 두께
+    // 관 그리기
+    function pipeSeg(a, b, t){ ctx.fillStyle = col.soft; ctx.fillRect(a, pipeY - t/2, b - a, t); ctx.strokeStyle = col.fg; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(a, pipeY - t/2); ctx.lineTo(b, pipeY - t/2); ctx.moveTo(a, pipeY + t/2); ctx.lineTo(b, pipeY + t/2); ctx.stroke(); }
+    pipeSeg(x0, xR0, pipeT);
+    // 좁아지는 부분
+    ctx.fillStyle = col.soft; ctx.beginPath();
+    ctx.moveTo(xR0, pipeY - pipeT/2); ctx.lineTo(xR0 + 10, pipeY - narrow/2); ctx.lineTo(xR1 - 10, pipeY - narrow/2); ctx.lineTo(xR1, pipeY - pipeT/2);
+    ctx.lineTo(xR1, pipeY + pipeT/2); ctx.lineTo(xR1 - 10, pipeY + narrow/2); ctx.lineTo(xR0 + 10, pipeY + narrow/2); ctx.lineTo(xR0, pipeY + pipeT/2); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = col.copper; ctx.lineWidth = 2; ctx.stroke();
+    pipeSeg(xR1, endX, pipeT);
+    ctx.fillStyle = col.copper; ctx.font = '600 12px IBM Plex Sans KR, sans-serif';
+    ctx.fillText('저항 = 좁은 관', xR0, pipeY - pipeT/2 - 30);
+    ctx.font = '11px IBM Plex Mono, monospace'; ctx.fillText(fmtR(s.R), xR0, pipeY - pipeT/2 - 16);
+    // 물 알갱이
+    const segLen = endX - x0;
+    ctx.fillStyle = col.water;
+    for (let k = 0; k < NP; k++){
+      const p = (parts[k] + waterOffset) % 1; const x = x0 + 4 + p * (segLen - 8);
+      const inNarrow = x > xR0 + 6 && x < xR1 - 6;
+      const rr = inNarrow ? Math.max(1.4, Math.min(3, narrow / 3)) : 3;
+      ctx.beginPath(); ctx.arc(x, pipeY, rr, 0, Math.PI * 2); ctx.fill();
+    }
+    // 버튼(밸브)
+    ctx.fillStyle = s.closed ? 'transparent' : col.fg;
+    ctx.strokeStyle = col.fg; ctx.lineWidth = 2;
+    if (!s.closed){ ctx.fillRect(xSw - 4, pipeY - pipeT/2 - 2, 8, pipeT + 4); }
+    ctx.beginPath(); ctx.moveTo(xSw, pipeY - pipeT/2 - 2); ctx.lineTo(xSw, pipeY - pipeT/2 - 14); ctx.stroke();
+    ctx.beginPath(); ctx.arc(xSw, pipeY - pipeT/2 - 18, 4, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = col.muted; ctx.font = '12px IBM Plex Sans KR, sans-serif';
+    ctx.fillText(s.closed ? '버튼: 열림' : '버튼: 막힘', xSw - 24, pipeY - pipeT/2 - 28);
+    // LED 문턱 + 전구
+    if (s.led){
+      const open = s.closed && s.V > VF;
+      const thrY = ground - VF * unit;
+      ctx.setLineDash([4, 4]); ctx.strokeStyle = col.led; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(tankL, thrY); ctx.lineTo(xLed + 10, thrY); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = col.led; ctx.font = '11px IBM Plex Sans KR, sans-serif';
+      ctx.fillText('LED 문턱 2.0V', xLed - 30, thrY - 6);
+      // 문(flap)
+      ctx.strokeStyle = col.led; ctx.lineWidth = 3; ctx.beginPath();
+      if (open){ ctx.moveTo(xLed, pipeY - pipeT/2); ctx.lineTo(xLed + 12, pipeY - pipeT/2 - 10); }
+      else { ctx.moveTo(xLed, pipeY - pipeT/2); ctx.lineTo(xLed, pipeY + pipeT/2); }
+      ctx.stroke();
+      // 전구
+      const b = Math.min(c.I / 0.02, 1); const bx = xLed + 2, by = pipeY - pipeT/2 - 52;
+      if (b > 0){ const g = ctx.createRadialGradient(bx, by, 2, bx, by, 26); g.addColorStop(0, col.glow); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = .25 + .75 * b; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, 26, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1; }
+      ctx.fillStyle = burnedNow(c) ? col.fg : (b > 0 ? col.led : col.bg);
+      ctx.strokeStyle = col.led; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx, by, 9, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx, by + 9); ctx.lineTo(bx, pipeY - pipeT/2 - 2); ctx.stroke();
+    }
+    // 끝(바닥으로)
+    ctx.fillStyle = col.muted; ctx.font = '12px IBM Plex Sans KR, sans-serif';
+    ctx.fillText('→ 바닥으로', endX - 64, pipeY + pipeT/2 + 16);
+  }
+  const burnedNow = c => state.led && c.I > 0.04;
+
+  // ---------- 화면 갱신 ----------
+  function update(){
+    const s = state, c = calc();
+    $('vOut').textContent = s.V.toFixed(1) + ' V'; $('rOut').textContent = fmtR(s.R);
+    $('nV').textContent = s.V.toFixed(1) + ' V'; $('nR').textContent = fmtR(s.R); $('nI').textContent = fmtI(c.I);
+    $('nVR').textContent = c.vR.toFixed(1) + ' V';
+    $('vLbl').textContent = s.V.toFixed(1) + 'V'; $('rLbl').textContent = fmtRs(s.R);
+    // 스위치/LED 버튼
+    const sw = $('sw'); sw.setAttribute('aria-pressed', String(s.closed)); sw.textContent = s.closed ? '버튼 눌림 (길 이어짐)' : '버튼 뗌 (길 끊김)';
+    const lb = $('ledBtn'); lb.setAttribute('aria-pressed', String(s.led)); lb.textContent = s.led ? 'LED 있음' : 'LED 빼기 (저항만)';
+    const arm = $('swArm'); if (s.closed){ arm.setAttribute('x2','146'); arm.setAttribute('y2','50'); } else { arm.setAttribute('x2','140'); arm.setAttribute('y2','30'); }
+    // 회로 LED
+    $('ledG').style.display = s.led ? '' : 'none';
+    const b = Math.min(c.I / 0.02, 1);
+    $('ledHalo').setAttribute('opacity', s.led ? (b > 0 ? (0.3 + 0.7 * b).toFixed(2) : '0') : '0');
+    $('ledTri').setAttribute('fill', s.led && burnedNow(c) ? 'var(--fg)' : (b > 0 ? 'var(--led)' : 'var(--panel)'));
+    // 저항 열
+    const P = c.I * c.vR;  // 저항이 쓰는 전력 (W)
+    $('heat').setAttribute('opacity', Math.min(P / 0.25, 1) * 0.35);
+    // 계산 줄
+    const f = $('formula');
+    if (!s.closed) f.textContent = `길이 끊겨서 전류 = 0 mA   (전압 ${s.V.toFixed(1)}V는 그대로 있어요)`;
+    else if (s.led && s.V <= VF) f.textContent = `${s.V.toFixed(1)}V는 LED 문턱 2.0V보다 낮아서 전류 ≈ 0 mA`;
+    else if (s.led) f.textContent = `전류 = (전압 − LED 문턱) ÷ 저항 = (${s.V.toFixed(1)} − 2.0) ÷ ${Math.round(s.R)}Ω = ${fmtI(c.I)}`;
+    else f.textContent = `전류 = 전압 ÷ 저항 = ${s.V.toFixed(1)} ÷ ${Math.round(s.R)}Ω = ${fmtI(c.I)}`;
+    // 상태
+    const st = []; const ma = c.I * 1000;
+    if (s.led){
+      if (ma === 0) st.push(['off','LED 꺼짐']);
+      else if (ma < 2) st.push(['ok','LED 희미하게 켜짐']);
+      else if (ma <= 20) st.push(['ok','LED 밝게 켜짐']);
+      else if (ma <= 40) st.push(['warn','너무 많이 흘러요 · LED가 위험해요']);
+      else st.push(['danger','LED가 타 버렸어요 · 저항을 키워 보세요']);
+    }
+    st.push(['', `저항이 쓰는 전력 = ${c.vR.toFixed(1)}V × ${fmtI(c.I)} = ${(P*1000).toFixed(1)} mW`]);
+    if (P > 0.25) st.push(['danger','저항이 뜨거워요 (보통 저항은 250mW까지)']);
+    $('status').innerHTML = st.map(([k,t]) => `<span class="pill ${k}">${t}</span>`).join('');
+    // 미션
+    if (burnedNow(c)) burned = true;
+    missions.forEach(m => { if (!done[m.id] && m.test(s, c)) done[m.id] = true; const li = $(m.id); li.classList.toggle('done', !!done[m.id]); li.querySelector('.tag').textContent = done[m.id] ? '성공' : '도전 중'; });
+    if (reduce) render(0);
+  }
+
+  // ---------- 애니메이션 ----------
+  let last = 0;
+  function speedPxPerSec(){ const ma = calc().I * 1000; return ma <= 0 ? 0 : 16 * Math.pow(Math.min(ma, 60), 0.6); }
+  function render(dt){
+    const c = calc(); const sp = speedPxPerSec();
+    circOffset = (circOffset + sp * dt) % wireLen;
+    for (let k = 0; k < ND; k++){
+      const d = (k * wireLen / ND + circOffset) % wireLen; const pt = wire.getPointAtLength(d);
+      dots[k].setAttribute('cx', pt.x.toFixed(1)); dots[k].setAttribute('cy', pt.y.toFixed(1));
+    }
+    const segLen = Math.max(1, W - 140);
+    waterOffset = (waterOffset + (sp * dt) / segLen) % 1;
+    drawWater(c);
+  }
+  function loop(t){ const dt = last ? Math.min((t - last) / 1000, 0.05) : 0; last = t; render(dt); requestAnimationFrame(loop); }
+
+  // ---------- 입력 ----------
+  $('v').addEventListener('input', e => { state.V = parseFloat(e.target.value); update(); });
+  $('r').addEventListener('input', e => { state.R = tToR(parseInt(e.target.value, 10)); update(); });
+  $('sw').addEventListener('click', () => { state.closed = !state.closed; update(); });
+  $('ledBtn').addEventListener('click', () => { state.led = !state.led; update(); });
+  $('reset').addEventListener('click', () => { state.V = 3.3; state.R = 1000; state.led = true; state.closed = true; $('v').value = 3.3; $('r').value = rToT(1000); update(); });
+
+  readColors(); resize();
+  $('r').value = rToT(1000); state.R = tToR(rToT(1000));
+  window.addEventListener('resize', () => { resize(); if (reduce) render(0); });
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  const recolor = () => { readColors(); if (reduce) render(0); };
+  mq.addEventListener ? mq.addEventListener('change', recolor) : mq.addListener(recolor);
+  new MutationObserver(recolor).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  update();
+  if (reduce) render(0); else requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
