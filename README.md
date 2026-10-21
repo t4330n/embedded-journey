@@ -41,7 +41,9 @@
 | :---: | --- | --- | --- | :---: |
 | 1 | GPIO | [LED 깜빡이기](./01_gpio/01_led_blink) | `GPIO 출력` `ODR` `BSRR` `HAL·LL·레지스터 비교` `SFRs 디버깅` | ✅ |
 | 1 | GPIO | [버튼으로 LED 제어](./01_gpio/02_button_led) | `GPIO 입력` `IDR` `BRR` `풀업·풀다운` `액티브 로우` | ✅ |
-| 0 | 기초 | 전기 기초 & 회로도 읽기 | `전압·전류·저항` `플로팅` `회로도 기호` `보드 회로도` | ⬜ |
+| 0 | 기초 | [전압·전류·저항](./docs/basics/01_voltage_current_resistance.md) | `전압` `전류` `저항` `GND` `옴의 법칙` | ✅ |
+| 0 | 기초 | [디지털 0/1과 플로팅](./docs/basics/02_digital_floating.md) · [실험](./00_basics/02_floating_input) | `플로팅` `PUPDR` `내부 풀업·풀다운` | ✅ |
+| 0 | 기초 | 회로도 읽기 & 보드 회로도 확인 | `회로도 기호` `보드 회로도` `레퍼런스 매뉴얼` | 🔄 |
 | 1 | GPIO | 버튼 토글 & 디바운싱 | | ⬜ |
 | 2 | Timer / Interrupt | 타이머로 LED 주기 제어, 외부 인터럽트(EXTI) | | ⬜ |
 | 3 | UART | PC와 시리얼 통신, printf 디버깅 | | ⬜ |
@@ -65,7 +67,10 @@ embedded-journey/
 ├── docs/
 │   ├── practice-template.md     # 실습 기록 템플릿
 │   ├── troubleshooting.md       # 문제 해결 기록 모음
-│   └── basics/                  # 전기 기초 노트 (예정)
+│   └── basics/                  # 전기 기초 노트
+│       └── sim/                 #   학습용 시뮬레이션 (GitHub Pages로 실행)
+├── 00_basics/                   # 전기 기초 실험
+│   └── 02_floating_input/       #   플로팅·풀업·풀다운 실험
 ├── 01_gpio/
 │   ├── 01_led_blink/            # 각 폴더 = STM32CubeIDE 프로젝트 1개
 │   │   ├── Core/                #   소스 코드 (main.c 등)
@@ -135,3 +140,4 @@ embedded-journey/
 | 5 | 01_led_blink | [HAL 내부의 비트 연산이 왜 필요한지 이해되지 않음](./docs/troubleshooting.md#5-hal-내부의-비트-연산이-왜-필요한지-이해되지-않음) |
 | 6 | 01_led_blink | [BSRR에 쓴 비트 값이 계속 유지된다고 오해함](./docs/troubleshooting.md#6-bsrr에-쓴-비트-값이-계속-유지된다고-오해함) |
 | 7 | 02_button_led | [버튼을 눌렀을 때 LED가 예상과 반대로 동작함](./docs/troubleshooting.md#7-버튼을-눌렀을-때-led가-예상과-반대로-동작함) |
+| 8 | 기초 02 | [실험에 사용할 A0 핀의 위치를 찾지 못함](./docs/troubleshooting.md#8-실험에-사용할-a0-핀의-위치를-찾지-못함) |

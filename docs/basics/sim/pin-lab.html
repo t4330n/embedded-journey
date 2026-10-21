@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PA0 핀 실험실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+/* Layout: 머리말 → 실험 버튼 줄 → [칩 안 회로 그림 | 설명·측정값] → 짧은 정리 */
+:root{
+  --bg:#EEF3F5; --panel:#FFFFFF; --fg:#16222C; --muted:#5A6B77; --line:#CCD7DE; --chip:#E4ECF0;
+  --hi:#E0702A;  /* 3.3V */
+  --lo:#2B78C9;  /* 0V */
+  --un:#9AA7B1;  /* 정해지지 않음 */
+  --cur:#E0B12A; --led:#22A856; --glow:#7EF0A6; --chipbody:#F6F8F9;
+  --f-display:"Jua","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E161C; --panel:#152029; --fg:#E3EBF0; --muted:#8FA2AF; --line:#2A3B47; --chip:#1E2C37;
+  --hi:#F08A45; --lo:#4B9BEA; --un:#6B7A86; --cur:#F2C94C; --led:#34D97A; --glow:#9CFFC0; --chipbody:#1A2731; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0E161C; --panel:#152029; --fg:#E3EBF0; --muted:#8FA2AF; --line:#2A3B47; --chip:#1E2C37;
+  --hi:#F08A45; --lo:#4B9BEA; --un:#6B7A86; --cur:#F2C94C; --led:#34D97A; --glow:#9CFFC0; --chipbody:#1A2731; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:1040px;margin:0 auto;padding-block:26px 44px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:18px}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,38px);margin:0;line-height:1.15}
+h2{font-family:var(--f-display);font-weight:400;font-size:20px;margin:0 0 8px}
+.lead{margin:6px 0 0;color:var(--muted);max-width:64ch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lbl{font-weight:600;font-size:14px;min-width:9.5em}
+.btn{font:inherit;font-weight:600;font-size:14px;border:1px solid var(--line);background:var(--chip);color:var(--fg);border-radius:10px;padding:7px 12px;cursor:pointer}
+.btn[aria-pressed="true"]{background:var(--fg);color:var(--panel);border-color:var(--fg)}
+.btn:focus-visible{outline:3px solid var(--lo);outline-offset:2px}
+.btn small{font-family:var(--f-mono);font-weight:500;opacity:.8;margin-left:4px}
+.controls{display:grid;gap:12px}
+.presets .btn{background:transparent}
+.stage{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px}
+@media (max-width:780px){.stage{grid-template-columns:1fr}}
+svg{display:block;width:100%;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:22px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.meas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.m{background:var(--chip);border-radius:10px;padding:8px 10px;display:grid;gap:2px}
+.m span{font-size:12.5px;color:var(--muted)}
+.m b{font-family:var(--f-mono);font-weight:500;font-size:19px;font-variant-numeric:tabular-nums}
+.explain{display:grid;gap:8px;margin-top:10px}
+.explain p{margin:0}
+.step{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start}
+.step .n{font-family:var(--f-display);color:var(--muted);font-size:17px;line-height:1.5}
+.verdict{font-weight:600;padding:8px 10px;border-radius:10px;border:1px dashed var(--line)}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.sum div{padding:12px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+.sum h3{margin:0 0 4px;font-size:16px}
+.sum p{margin:0;color:var(--muted);font-size:14px}
+.note{color:var(--muted);font-size:12.5px;margin:0}
+.flow{stroke-dasharray:6 10;animation:flow 0.9s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.jitter{animation:jit 0.35s steps(2) infinite}
+@keyframes jit{50%{opacity:.35}}
+@media (prefers-reduced-motion: reduce){.flow,.jitter{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>PA0 핀 실험실</h1>
+    <p class="lead">칩 안에는 PA0를 <b>저항을 거쳐 3.3V에 연결하는 스위치(①)</b>와 <b>저항을 거쳐 GND에 연결하는 스위치(②)</b>가 들어 있어요. 스위치와 바깥 연결을 바꾸면서, 선마다 전압이 어떻게 되는지 색으로 확인해 보세요.</p>
+  </header>
+
+  <section class="panel controls" aria-label="조절판">
+    <div class="row presets"><span class="lbl">어제 한 실험</span>
+      <button class="btn" data-preset="A">A 플로팅 + 손가락</button>
+      <button class="btn" data-preset="B">B 풀업</button>
+      <button class="btn" data-preset="C">C 풀다운</button>
+      <button class="btn" data-preset="D">D 풀업 + GND 선</button>
+      <button class="btn" data-preset="E">E 풀다운 + 3V3 선</button>
+    </div>
+    <div class="row" role="group" aria-label="PUPDR 설정"><span class="lbl">칩 안 스위치 (PUPDR)</span>
+      <button class="btn" data-pull="none">둘 다 열기<small>00</small></button>
+      <button class="btn" data-pull="up">① 닫기 · 풀업<small>01</small></button>
+      <button class="btn" data-pull="down">② 닫기 · 풀다운<small>10</small></button>
+    </div>
+    <div class="row" role="group" aria-label="바깥 연결"><span class="lbl">점퍼선 끝 (바깥)</span>
+      <button class="btn" data-ext="none">아무 데도 안 이음</button>
+      <button class="btn" data-ext="finger">손가락으로 잡기</button>
+      <button class="btn" data-ext="gnd">GND에 꽂기</button>
+      <button class="btn" data-ext="vcc">3V3에 꽂기</button>
+    </div>
+  </section>
+
+  <section class="stage">
+    <div class="panel">
+      <h2>칩 안을 들여다보면</h2>
+      <svg id="svg" viewBox="0 0 440 400" role="img" aria-label="PA0 핀과 칩 안의 풀업, 풀다운 저항, 바깥 점퍼선 회로">
+        <!-- 칩 몸체 -->
+        <rect x="150" y="14" width="276" height="372" rx="16" fill="var(--chipbody)" stroke="var(--line)" stroke-width="2"/>
+        <text x="410" y="36" text-anchor="end" fill="var(--muted)" font-size="12" font-family="var(--f-body)">칩(STM32) 안</text>
+        <!-- 3.3V 레일 -->
+        <line id="railTop" x1="260" y1="44" x2="330" y2="44" stroke="var(--hi)" stroke-width="5" stroke-linecap="round"/>
+        <text x="338" y="49" fill="var(--hi)" font-family="var(--f-mono)" font-size="13">3.3V</text>
+        <line id="topWire" x1="280" y1="44" x2="280" y2="64" stroke="var(--hi)" stroke-width="4"/>
+        <!-- 풀업 저항 -->
+        <polyline id="rUp" points="280,64 280,70 270,76 290,88 270,100 290,112 280,118 280,124" fill="none" stroke="var(--hi)" stroke-width="3" stroke-linejoin="round"/>
+        <text x="298" y="96" fill="var(--muted)" font-size="12" font-family="var(--f-body)">풀업 저항</text>
+        <text id="rUpDrop" x="298" y="112" fill="var(--muted)" font-size="11.5" font-family="var(--f-mono)"></text>
+        <!-- 스위치 ① -->
+        <line id="wUpA" x1="280" y1="124" x2="280" y2="136" stroke="var(--hi)" stroke-width="4"/>
+        <circle cx="280" cy="138" r="3.5" fill="var(--fg)"/>
+        <line id="sw1" x1="280" y1="138" x2="280" y2="166" stroke="var(--fg)" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="280" cy="168" r="3.5" fill="var(--fg)"/>
+        <text x="236" y="158" fill="var(--fg)" font-size="13" font-family="var(--f-display)">①</text>
+        <line id="wUpB" x1="280" y1="168" x2="280" y2="200" stroke="var(--un)" stroke-width="4"/>
+        <!-- 노드 PA0 -->
+        <line id="node" x1="40" y1="200" x2="360" y2="200" stroke="var(--un)" stroke-width="5" stroke-linecap="round"/>
+        <circle id="dot" cx="280" cy="200" r="6" fill="var(--un)"/>
+        <text x="160" y="192" fill="var(--fg)" font-size="13" font-weight="600" font-family="var(--f-body)">PA0</text>
+        <text id="nodeV" x="160" y="222" fill="var(--un)" font-size="13" font-family="var(--f-mono)">?</text>
+        <!-- 귀(IDR) + LED -->
+        <rect x="360" y="182" width="56" height="36" rx="8" fill="var(--panel)" stroke="var(--line)"/>
+        <text x="388" y="198" text-anchor="middle" fill="var(--muted)" font-size="10.5" font-family="var(--f-body)">귀 (IDR)</text>
+        <text id="idr" x="388" y="212" text-anchor="middle" fill="var(--fg)" font-size="13" font-family="var(--f-mono)">?</text>
+        <circle id="ledHalo" cx="388" cy="252" r="22" fill="var(--glow)" opacity="0"/>
+        <circle id="led" cx="388" cy="252" r="9" fill="var(--panel)" stroke="var(--led)" stroke-width="2.5"/>
+        <text x="388" y="282" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="var(--f-body)">LD4</text>
+        <!-- 스위치 ② -->
+        <line id="wDnA" x1="280" y1="200" x2="280" y2="232" stroke="var(--un)" stroke-width="4"/>
+        <circle cx="280" cy="232" r="3.5" fill="var(--fg)"/>
+        <line id="sw2" x1="280" y1="232" x2="280" y2="260" stroke="var(--fg)" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="280" cy="262" r="3.5" fill="var(--fg)"/>
+        <text x="236" y="252" fill="var(--fg)" font-size="13" font-family="var(--f-display)">②</text>
+        <line id="wDnB" x1="280" y1="262" x2="280" y2="276" stroke="var(--lo)" stroke-width="4"/>
+        <!-- 풀다운 저항 -->
+        <polyline id="rDn" points="280,276 280,282 270,288 290,300 270,312 290,324 280,330 280,336" fill="none" stroke="var(--lo)" stroke-width="3" stroke-linejoin="round"/>
+        <text x="298" y="306" fill="var(--muted)" font-size="12" font-family="var(--f-body)">풀다운 저항</text>
+        <text id="rDnDrop" x="298" y="322" fill="var(--muted)" font-size="11.5" font-family="var(--f-mono)"></text>
+        <line id="botWire" x1="280" y1="336" x2="280" y2="356" stroke="var(--lo)" stroke-width="4"/>
+        <line x1="260" y1="356" x2="300" y2="356" stroke="var(--lo)" stroke-width="5" stroke-linecap="round"/>
+        <line x1="268" y1="363" x2="292" y2="363" stroke="var(--lo)" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="275" y1="370" x2="285" y2="370" stroke="var(--lo)" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="306" y="368" fill="var(--lo)" font-family="var(--f-mono)" font-size="13">GND 0V</text>
+        <!-- 칩 경계의 핀 -->
+        <rect x="142" y="192" width="16" height="16" fill="var(--fg)"/>
+        <text x="150" y="246" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="var(--f-body)">A0 구멍</text>
+        <!-- 바깥 -->
+        <text x="12" y="36" fill="var(--muted)" font-size="12" font-family="var(--f-body)">바깥(점퍼선)</text>
+        <g id="extFinger">
+          <path d="M18 168 q10 -26 22 -4 q8 -22 18 -2 q10 -18 16 4 l2 30 q-28 12 -58 0z" fill="#E8B996" opacity=".9"/>
+          <text x="10" y="150" fill="var(--muted)" font-size="11.5" font-family="var(--f-body)">손가락</text>
+          <path id="noise" d="M30 120 l6 -8 l6 8 l6 -8 l6 8 l6 -8 l6 8" fill="none" stroke="var(--un)" stroke-width="2" class="jitter"/>
+        </g>
+        <g id="extGnd">
+          <line x1="40" y1="200" x2="40" y2="330" stroke="var(--lo)" stroke-width="4"/>
+          <line x1="24" y1="330" x2="56" y2="330" stroke="var(--lo)" stroke-width="5" stroke-linecap="round"/>
+          <line x1="31" y1="337" x2="49" y2="337" stroke="var(--lo)" stroke-width="3.5" stroke-linecap="round"/>
+          <text x="62" y="336" fill="var(--lo)" font-size="12" font-family="var(--f-mono)">보드 GND</text>
+        </g>
+        <g id="extVcc">
+          <line x1="40" y1="70" x2="40" y2="200" stroke="var(--hi)" stroke-width="4"/>
+          <line x1="22" y1="70" x2="58" y2="70" stroke="var(--hi)" stroke-width="5" stroke-linecap="round"/>
+          <text x="62" y="75" fill="var(--hi)" font-size="12" font-family="var(--f-mono)">보드 3V3</text>
+        </g>
+        <!-- 전류 흐름 표시 -->
+        <path id="curPath" d="" fill="none" stroke="var(--cur)" stroke-width="3" class="flow" opacity="0"/>
+      </svg>
+      <div class="legend">
+        <span><i style="background:var(--hi)"></i>3.3V</span>
+        <span><i style="background:var(--lo)"></i>0V</span>
+        <span><i style="background:var(--un)"></i>정해지지 않음 (어디에도 연결 안 됨)</span>
+        <span><i style="background:var(--cur)"></i>전류가 흐르는 길</span>
+      </div>
+    </div>
+
+    <div class="panel" aria-live="polite">
+      <h2 id="title">상태</h2>
+      <div class="meas">
+        <div class="m"><span>PA0 전압</span><b id="mV">?</b></div>
+        <div class="m"><span>칩이 읽은 값 (IDR)</span><b id="mIdr">?</b></div>
+        <div class="m"><span>흐르는 전류</span><b id="mI">0</b></div>
+        <div class="m"><span>LD4</span><b id="mLed">꺼짐</b></div>
+      </div>
+      <div class="explain" id="explain"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>세 줄 정리</h2>
+    <div class="sum">
+      <div><h3>핀 값 = 핀이 연결된 곳의 전압</h3><p>3.3V에 연결되면 1, GND에 연결되면 0, 어디에도 연결 안 되면 정해지지 않아요(플로팅).</p></div>
+      <div><h3>풀업 = 저항을 거쳐 3.3V에 연결</h3><p>스위치 ①은 위쪽 3.3V에만 이어져 있어서 풀업만 할 수 있어요. 스위치 ②는 GND에만 이어져 있어서 풀다운만 할 수 있어요.</p></div>
+      <div><h3>저항은 "져 주는" 연결</h3><p>바깥에서 선으로 반대쪽에 바로 이으면, 선이 이기고 저항이 전압을 전부 맡아요. 그래서 합선 없이 값만 바뀌어요.</p></div>
+    </div>
+  </section>
+
+  <p class="note">칩 안 풀업·풀다운 저항은 대략 40kΩ으로 계산했어요(실제 값은 데이터시트 참고). 1로 읽히는 전압·0으로 읽히는 전압의 경계도 대략값이에요.</p>
+</div>
+
+<script>
+(function(){
+  const R = 40000, VDD = 3.3;
+  const s = { pull:'up', ext:'none' };
+  const $ = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const colorOf = v => v === null ? 'var(--un)' : (v >= 1.65 ? 'var(--hi)' : 'var(--lo)');
+  let floatTimer = null, floatBit = 0;
+
+  function solve(){
+    const { pull, ext } = s;
+    let V = null, I = 0, path = '', float = false;
+    if (ext === 'gnd'){ V = 0; if (pull === 'up'){ I = VDD / R; path = 'M280 44 V200 H40 V330'; } }
+    else if (ext === 'vcc'){ V = VDD; if (pull === 'down'){ I = VDD / R; path = 'M40 70 V200 H280 V356'; } }
+    else {
+      if (pull === 'up') V = VDD; else if (pull === 'down') V = 0; else float = true;
+    }
+    return { V, I, path, float };
+  }
+
+  function text(r){
+    const { pull, ext } = s;
+    const sw = pull === 'up' ? '스위치 ①이 닫혀서 PA0가 <b>저항을 거쳐 3.3V에 연결</b>됐어요.' :
+               pull === 'down' ? '스위치 ②가 닫혀서 PA0가 <b>저항을 거쳐 GND에 연결</b>됐어요.' :
+               '스위치 ①, ②가 모두 열려서 칩 안에서는 PA0가 <b>아무 데도 연결되지 않았어요.</b>';
+    let ex = '', why = '', verdict = '';
+    if (ext === 'none'){
+      ex = '점퍼선 끝은 아무 데도 안 이어져 있어요. 점퍼선은 PA0가 길어진 것뿐이라, 끝까지 PA0와 같은 전압이에요.';
+      if (pull === 'none'){ why = '전압을 정해 주는 연결이 하나도 없어서 PA0 전압이 <b>정해지지 않아요</b>(플로팅).'; verdict = '값이 그때그때 달라요'; }
+      else { why = `GND(또는 3.3V) 반대쪽까지 이어진 길이 없어서 <b>전류가 0</b>이에요. 압류항으로 저항이 맡는 전압 = 0 × 저항 = <b>0V</b>. 그래서 PA0는 저항 반대편과 같은 <b>${pull==='up'?'3.3V':'0V'}</b>가 돼요.`; verdict = pull==='up' ? '3.3V → 1로 읽혀요' : '0V → 0으로 읽혀요'; }
+    } else if (ext === 'finger'){
+      ex = '손가락(몸)이 주변의 전기 잡음을 모아 점퍼선을 통해 PA0에 전해요. 하지만 이 연결은 아주 약해요.';
+      if (pull === 'none'){ why = 'PA0를 붙잡아 주는 연결이 없어서, 약한 잡음에도 전압이 <b>출렁여요</b>.'; verdict = '0과 1이 제멋대로 바뀌어요 (실험 A)'; }
+      else { why = `저항이 PA0를 ${pull==='up'?'3.3V':'GND'}에 단단히 연결해 두고 있어서, 손가락 잡음 정도로는 <b>흔들리지 않아요</b>.`; verdict = pull==='up' ? '그대로 1' : '그대로 0'; }
+    } else if (ext === 'gnd'){
+      ex = '점퍼선이 PA0를 <b>GND에 바로</b> 연결해요. 선에는 저항이 거의 없어서 PA0는 GND와 같은 <b>0V</b>가 돼요.';
+      if (pull === 'up'){ why = '이제 3.3V → 풀업 저항 → PA0 → 점퍼선 → GND로 <b>길이 이어져 전류가 흘러요</b>. 3.3V와 0V 사이의 높이 차는 <b>저항이 전부 맡아요</b>. 저항이 없었다면 3.3V와 GND가 바로 이어져 합선이었을 거예요. <b>B1 버튼을 누른 것과 같은 회로</b>예요.'; verdict = '0V → 0으로 읽혀요 (실험 D)'; }
+      else if (pull === 'down'){ why = '이미 GND 쪽에 연결돼 있어서 높이 차가 없어요. 전류도 0이에요.'; verdict = '0'; }
+      else { why = '저항을 거치지 않고 GND에 바로 연결된 상태예요. 3.3V로 가는 길이 없어서 전류는 0이에요.'; verdict = '0'; }
+    } else {
+      ex = '점퍼선이 PA0를 <b>3V3에 바로</b> 연결해요. PA0는 3.3V가 돼요.';
+      if (pull === 'down'){ why = '이제 3V3 → 점퍼선 → PA0 → 풀다운 저항 → GND로 <b>길이 이어져 전류가 흘러요</b>. 높이 차 3.3V는 <b>풀다운 저항이 전부 맡아요</b>.'; verdict = '3.3V → 1로 읽혀요 (실험 E)'; }
+      else if (pull === 'up'){ why = '이미 3.3V 쪽에 연결돼 있어서 높이 차가 없어요. 전류도 0이에요.'; verdict = '1'; }
+      else { why = 'GND로 가는 길이 없어서 전류는 0이에요.'; verdict = '1'; }
+    }
+    return `<div class="step"><span class="n">1</span><p>${sw}</p></div>
+            <div class="step"><span class="n">2</span><p>${ex}</p></div>
+            <div class="step"><span class="n">3</span><p>${why}</p></div>
+            <p class="verdict">결과: ${verdict}</p>`;
+  }
+
+  function paint(){
+    const r = solve();
+    // 버튼 상태
+    document.querySelectorAll('[data-pull]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pull === s.pull)));
+    document.querySelectorAll('[data-ext]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ext === s.ext)));
+    // 스위치 모양
+    const up = s.pull === 'up', dn = s.pull === 'down';
+    $('sw1').setAttribute('x2', up ? '280' : '300'); $('sw1').setAttribute('y2', up ? '166' : '150');
+    $('sw2').setAttribute('x2', dn ? '280' : '300'); $('sw2').setAttribute('y2', dn ? '260' : '244');
+    // 바깥
+    $('extFinger').style.display = s.ext === 'finger' ? '' : 'none';
+    $('extGnd').style.display = s.ext === 'gnd' ? '' : 'none';
+    $('extVcc').style.display = s.ext === 'vcc' ? '' : 'none';
+    // 노드 전압 색
+    clearInterval(floatTimer); floatTimer = null;
+    const nodeCol = r.float ? 'var(--un)' : colorOf(r.V);
+    ['node','wUpB','wDnA'].forEach(id => $(id).setAttribute('stroke', nodeCol));
+    $('dot').setAttribute('fill', nodeCol);
+    if (!up) $('wUpB').setAttribute('stroke', r.float ? 'var(--un)' : nodeCol);
+    // 저항이 맡은 전압
+    const dropUp = up && r.V !== null ? (VDD - r.V) : null;
+    const dropDn = dn && r.V !== null ? r.V : null;
+    $('rUpDrop').textContent = up ? `맡은 전압 ${dropUp.toFixed(1)}V` : '연결 안 됨';
+    $('rDnDrop').textContent = dn ? `맡은 전압 ${dropDn.toFixed(1)}V` : '연결 안 됨';
+    // 측정값
+    $('mI').textContent = r.I > 0 ? (r.I * 1e6 / 1000).toFixed(3) + ' mA' : '0 mA';
+    const cp = $('curPath'); cp.setAttribute('d', r.path); cp.setAttribute('opacity', r.path ? '1' : '0');
+    const setRead = (v, bit, label) => {
+      $('mV').textContent = label; $('nodeV').textContent = label; $('nodeV').setAttribute('fill', v === null ? 'var(--un)' : colorOf(v));
+      $('mIdr').textContent = bit; $('idr').textContent = bit;
+      const on = bit === '1';
+      $('mLed').textContent = on ? '켜짐' : '꺼짐';
+      $('led').setAttribute('fill', on ? 'var(--led)' : 'var(--panel)');
+      $('ledHalo').setAttribute('opacity', on ? '.55' : '0');
+    };
+    if (r.float){
+      if (s.ext === 'finger'){
+        const tick = () => { floatBit = Math.random() < 0.5 ? 1 : 0; setRead(null, String(floatBit), '출렁임'); };
+        tick(); if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) floatTimer = setInterval(tick, 260);
+      } else setRead(null, '?', '정해지지 않음');
+    } else {
+      setRead(r.V, r.V >= 1.65 ? '1' : '0', r.V.toFixed(1) + ' V');
+    }
+    const names = { none:'둘 다 열기', up:'풀업', down:'풀다운' };
+    const extn = { none:'아무 데도 안 이음', finger:'손가락', gnd:'GND에 꽂기', vcc:'3V3에 꽂기' };
+    $('title').textContent = `${names[s.pull]} + ${extn[s.ext]}`;
+    $('explain').innerHTML = text(r);
+  }
+
+  const presets = { A:['none','finger'], B:['up','none'], C:['down','none'], D:['up','gnd'], E:['down','vcc'] };
+  document.querySelectorAll('[data-pull]').forEach(b => b.addEventListener('click', () => { s.pull = b.dataset.pull; paint(); }));
+  document.querySelectorAll('[data-ext]').forEach(b => b.addEventListener('click', () => { s.ext = b.dataset.ext; paint(); }));
+  document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => { [s.pull, s.ext] = presets[b.dataset.preset]; paint(); }));
+  paint();
+})();
+</script>
+</body>
+</html>
