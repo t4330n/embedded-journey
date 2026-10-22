@@ -43,7 +43,8 @@
 | 1 | GPIO | [버튼으로 LED 제어](./01_gpio/02_button_led) | `GPIO 입력` `IDR` `BRR` `풀업·풀다운` `액티브 로우` | ✅ |
 | 0 | 기초 | [전압·전류·저항](./docs/basics/01_voltage_current_resistance.md) | `전압` `전류` `저항` `GND` `옴의 법칙` | ✅ |
 | 0 | 기초 | [디지털 0/1과 플로팅](./docs/basics/02_digital_floating.md) · [실험](./00_basics/02_floating_input) | `플로팅` `PUPDR` `내부 풀업·풀다운` | ✅ |
-| 0 | 기초 | 회로도 읽기 & 보드 회로도 확인 | `회로도 기호` `보드 회로도` `레퍼런스 매뉴얼` | 🔄 |
+| 0 | 기초 | [회로도 기호 읽기](./docs/basics/03_schematic_symbols.md) | `회로도 기호` `연결점` `넷 라벨` `부품 이름` | ✅ |
+| 0 | 기초 | 보드 회로도 확인 | `보드 회로도` `B1 풀업 저항` `LD4` | 🔄 |
 | 1 | GPIO | 버튼 토글 & 디바운싱 | | ⬜ |
 | 2 | Timer / Interrupt | 타이머로 LED 주기 제어, 외부 인터럽트(EXTI) | | ⬜ |
 | 3 | UART | PC와 시리얼 통신, printf 디버깅 | | ⬜ |
