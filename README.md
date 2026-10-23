@@ -45,7 +45,7 @@
 | 0 | 기초 | [디지털 0/1과 플로팅](./docs/basics/02_digital_floating.md) · [실험](./00_basics/02_floating_input) | `플로팅` `PUPDR` `내부 풀업·풀다운` | ✅ |
 | 0 | 기초 | [회로도 기호 읽기](./docs/basics/03_schematic_symbols.md) | `회로도 기호` `연결점` `넷 라벨` `부품 이름` | ✅ |
 | 0 | 기초 | [보드 회로도 확인](./docs/basics/04_board_schematic.md) | `보드 회로도` `B1 풀업 저항` `LD4` `트랜지스터` | ✅ |
-| 1 | GPIO | 버튼 토글 & 디바운싱 | | ⬜ |
+| 1 | GPIO | [버튼 토글 & 디바운싱](./01_gpio/03_button_toggle) | `엣지 검출` `바운싱` `디바운싱` `HAL_GetTick` `Live Expressions` | ✅ |
 | 2 | Timer / Interrupt | 타이머로 LED 주기 제어, 외부 인터럽트(EXTI) | | ⬜ |
 | 3 | UART | PC와 시리얼 통신, printf 디버깅 | | ⬜ |
 | 4 | I2C / SPI | 온도 센서 읽기, 디스플레이 출력 | | ⬜ |
@@ -78,7 +78,8 @@ embedded-journey/
 │   │   ├── images/              #   결과 GIF, 디버거 캡처
 │   │   ├── 01_led_blink.ioc     #   CubeMX 설정 파일
 │   │   └── README.md            #   실습 기록
-│   └── 02_button_led/
+│   ├── 02_button_led/
+│   └── 03_button_toggle/
 ├── 02_timer_interrupt/
 ├── 03_uart/
 ├── 04_i2c_spi/
@@ -121,11 +122,14 @@ embedded-journey/
 - 입력 핀은 아무 데도 연결되지 않으면 값이 흔들리는 **플로팅** 상태가 되므로, **풀업·풀다운** 저항으로 기본값을 정한다.
 - 보드의 사용자 버튼 B1은 외부 풀업 회로라 누르면 0이 되는 **액티브 로우**이며, 외부 저항이 있으면 소프트웨어에서는 No pull로 설정해야 한다.
 - 입력 값의 의미는 회로 설계에 따라 정해지므로, 코드 작성 전에 회로도나 디버거로 실제 값을 확인해야 한다.
+- 기계식 버튼은 누르는 순간 접점이 떨리는 **바운싱**이 있어 한 번의 입력이 여러 번 읽힌다. 회로(B1의 C16·R26)나 코드(일정 시간 유지될 때만 인정하는 **디바운싱**)로 걸러야 한다.
+- 칩은 입력을 읽는 코드가 실행될 때만 핀 값을 안다(**폴링**). 눌리는 순간을 찾으려면 이전 값과 현재 값을 비교한다.
 - 보드 회로도(MB1717)에서 LD4는 PA5가 트랜지스터(T2)를 켜고 끄는 구조로, LED 전류는 칩이 아닌 3V3에서 공급된다.
 
 **개발 도구**
 - 보드(Board Selector)가 아닌 칩(MCU Selector) 단위로 프로젝트를 만들어야 BSP의 점유 없이 핀을 직접 설정할 수 있다.
 - 디버거의 **SFRs 창**으로 레지스터 값을 직접 관찰하면, 코드만 읽어서는 이해하기 어려운 동작도 빠르게 확인할 수 있다.
+- **Live Expressions**는 프로그램을 멈추지 않고 변수 값을 실시간으로 보여 주므로, 바운싱처럼 빠른 현상의 횟수를 측정할 수 있다. (Debug로 시작 후 Resume으로 실행)
 
 <br>
 
@@ -143,3 +147,6 @@ embedded-journey/
 | 6 | 01_led_blink | [BSRR에 쓴 비트 값이 계속 유지된다고 오해함](./docs/troubleshooting.md#6-bsrr에-쓴-비트-값이-계속-유지된다고-오해함) |
 | 7 | 02_button_led | [버튼을 눌렀을 때 LED가 예상과 반대로 동작함](./docs/troubleshooting.md#7-버튼을-눌렀을-때-led가-예상과-반대로-동작함) |
 | 8 | 기초 02 | [실험에 사용할 A0 핀의 위치를 찾지 못함](./docs/troubleshooting.md#8-실험에-사용할-a0-핀의-위치를-찾지-못함) |
+| 9 | 03_button_toggle | [버튼을 누르면 입력 변수 값이 저절로 바뀐다고 오해함](./docs/troubleshooting.md#9-버튼을-누르면-입력-변수-값이-저절로-바뀐다고-오해함) |
+| 10 | 03_button_toggle | [점퍼선으로 한 번 연결해도 눌림 횟수가 10 이상 증가함](./docs/troubleshooting.md#10-점퍼선으로-한-번-연결해도-눌림-횟수가-10-이상-증가함) |
+| 11 | 03_button_toggle | [Run으로 실행하면 Live Expressions에서 변수 값을 볼 수 없음](./docs/troubleshooting.md#11-run으로-실행하면-live-expressions에서-변수-값을-볼-수-없음) |
