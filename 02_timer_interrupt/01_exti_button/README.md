@@ -27,7 +27,7 @@
 | Pinout | PC13 → `GPIO_EXTI13` | PC13을 인터럽트를 걸 수 있는 입력으로 사용 |
 | GPIO → PC13 | `External Interrupt Mode with Falling edge trigger detection` | 전압이 **1 → 0으로 떨어지는 순간(Falling)** 에 인터럽트 발생. B1은 누르면 0이 되므로 "누르는 순간" |
 | GPIO → PC13 | `No pull-up and no pull-down` | 보드에 외부 풀업(R29)이 있음 |
-| NVIC | `EXTI line 4 to 15 interrupts` → **Enabled** | CPU가 EXTI 4~15번 인터럽트를 받도록 허용. STM32C0은 4~15번 핀이 인터럽트 하나를 함께 사용 |
+| NVIC | `EXTI line 4 to 15 interrupts` → **Enabled** | CPU가 EXTI 4\~15번 인터럽트를 받도록 허용. STM32C0은 4\~15번 핀이 인터럽트 하나를 함께 사용 |
 
 NVIC를 켜면 `MX_GPIO_Init()` 마지막에 다음 코드가 생성된다.
 ```c
