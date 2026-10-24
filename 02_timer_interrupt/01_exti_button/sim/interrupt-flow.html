@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>인터럽트 흐름 실험실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+:root{
+  --bg:#EEF3F5; --panel:#FFFFFF; --fg:#16222C; --muted:#5A6B77; --line:#CCD7DE; --chip:#E4ECF0;
+  --hw:#2B78C9; --hwbg:#E3EEFA; --sw:#1F9A6B; --swbg:#E1F4EC; --act:#E0702A; --actbg:#FCE9DC;
+  --chg:#FFF1C2; --chgline:#E0B12A; --led:#22A856; --glow:#7EF0A6;
+  --f-display:"Jua","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E161C; --panel:#152029; --fg:#E3EBF0; --muted:#8FA2AF; --line:#2A3B47; --chip:#1E2C37;
+  --hw:#5FA6EE; --hwbg:#16293B; --sw:#3CC48F; --swbg:#13302A; --act:#F08A45; --actbg:#3A2416;
+  --chg:#3A3214; --chgline:#F2C94C; --led:#34D97A; --glow:#9CFFC0; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0E161C; --panel:#152029; --fg:#E3EBF0; --muted:#8FA2AF; --line:#2A3B47; --chip:#1E2C37;
+  --hw:#5FA6EE; --hwbg:#16293B; --sw:#3CC48F; --swbg:#13302A; --act:#F08A45; --actbg:#3A2416;
+  --chg:#3A3214; --chgline:#F2C94C; --led:#34D97A; --glow:#9CFFC0; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:960px;margin:0 auto;padding-block:26px 44px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,38px);margin:0;line-height:1.15}
+h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
+.lead{margin:6px 0 0;color:var(--muted);max-width:68ch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.parts{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:6px}
+.part{background:var(--chip);border:1.5px solid var(--line);border-radius:12px;padding:14px 6px;text-align:center;min-width:0;transition:background .25s,border-color .25s}
+.part strong{display:flex;justify-content:center;align-items:center;gap:8px;font-size:17px}
+.part .sub{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.part.hw.on{background:var(--hwbg);border:3px solid var(--hw);padding:12.5px 4.5px}
+.part.sw.on{background:var(--swbg);border:3px solid var(--sw);padding:12.5px 4.5px}
+.part.hw.on .sub{color:var(--hw)} .part.sw.on .sub{color:var(--sw)}
+.arrow::before{content:"→";color:var(--muted);font-size:20px}
+.led{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid var(--muted);background:var(--panel)}
+.led.ledon{background:var(--led);border-color:var(--led);box-shadow:0 0 10px var(--glow)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-top:8px}
+.sw-dot{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.phase{display:inline-block;font-size:13px;font-weight:600;border-radius:999px;padding:2px 10px;margin-bottom:6px}
+.phase.hw{background:var(--hwbg);color:var(--hw)} .phase.sw{background:var(--swbg);color:var(--sw)} .phase.ready{background:var(--chip);color:var(--muted)}
+.desc{margin:6px 0 10px;font-size:16px}
+.code{font-family:var(--f-mono);font-size:13.5px;background:var(--chip);border-radius:10px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.state{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.cell{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;color:var(--muted);transition:background .25s,border-color .25s;min-width:0}
+.cell b{display:block;color:var(--fg);font-size:15px;font-weight:600;margin-top:2px;overflow-wrap:anywhere}
+.cell.chg{background:var(--chg);border-color:var(--chgline)}
+.nav{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-weight:600;font-size:14px;border:1px solid var(--line);background:var(--chip);color:var(--fg);border-radius:10px;padding:8px 14px;cursor:pointer}
+.btn.primary{background:var(--fg);color:var(--panel);border-color:var(--fg)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:focus-visible{outline:3px solid var(--hw);outline-offset:2px}
+.steps{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.steps button{font:inherit;font-size:13px;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
+.steps button[aria-current="step"]{background:var(--act);border-color:var(--act);color:#fff}
+.sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.sum div{border-radius:10px;padding:10px 12px;font-size:14px}
+.sum .r{background:var(--chip)} .sum .h{background:var(--hwbg)} .sum .s{background:var(--swbg)}
+.sum strong{display:block;font-size:15px}
+.foot{font-size:13px;color:var(--muted)}
+@media (max-width:640px){.parts{grid-template-columns:1fr}.arrow{text-align:center;line-height:1}.arrow::before{content:"↓"}.state{grid-template-columns:repeat(2,minmax(0,1fr))}.sum{grid-template-columns:1fr}.steps{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>인터럽트 흐름 실험실</h1>
+    <p class="lead">NUCLEO-C031C6에서 B1 버튼을 누르는 순간부터 LED가 바뀌고 원래 하던 일로 돌아가기까지를 8단계로 넘겨 봅니다. 단계마다 <b>어느 부품이 일하는지</b>와 <b>어떤 값이 바뀌는지</b>를 확인하세요.</p>
+  </header>
+
+  <section class="panel" aria-label="부품 흐름">
+    <div class="parts" role="img" aria-label="B1 핀, EXTI, NVIC, CPU, LD4 순서로 이어진 인터럽트 부품">
+      <div class="part hw" id="p0"><strong>B1 · PC13</strong><span class="sub">버튼 핀</span></div>
+      <div class="arrow" aria-hidden="true"></div>
+      <div class="part hw" id="p1"><strong>EXTI</strong><span class="sub">경비원 · 깃발(FPR1)</span></div>
+      <div class="arrow" aria-hidden="true"></div>
+      <div class="part hw" id="p2"><strong>NVIC</strong><span class="sub">CPU 어깨 툭</span></div>
+      <div class="arrow" aria-hidden="true"></div>
+      <div class="part sw" id="p3"><strong>CPU</strong><span class="sub">코드 실행</span></div>
+      <div class="arrow" aria-hidden="true"></div>
+      <div class="part sw" id="p4"><strong><span class="led" id="ledc"></span>LD4</strong><span class="sub">초록 LED</span></div>
+    </div>
+    <div class="legend">
+      <span><span class="sw-dot" style="background:var(--hw)"></span>파란 테두리 = 하드웨어가 일하는 중</span>
+      <span><span class="sw-dot" style="background:var(--sw)"></span>초록 테두리 = 코드(소프트웨어)가 일하는 중</span>
+      <span><span class="sw-dot" style="background:var(--chgline)"></span>노란 칸 = 이번 단계에서 바뀐 값</span>
+    </div>
+  </section>
+
+  <section class="panel" aria-live="polite">
+    <span class="phase ready" id="phase">준비</span>
+    <h2 id="ttl">0. 준비 (프로그램 시작)</h2>
+    <p class="desc" id="dsc"></p>
+    <pre class="code" id="cd"></pre>
+  </section>
+
+  <section class="panel" aria-label="현재 값">
+    <div class="state">
+      <div class="cell" id="c_pin"></div>
+      <div class="cell" id="c_fpr"></div>
+      <div class="cell" id="c_cpu"></div>
+      <div class="cell" id="c_cnt"></div>
+      <div class="cell" id="c_led"></div>
+    </div>
+  </section>
+
+  <section class="nav" aria-label="단계 이동">
+    <button class="btn" id="pv" type="button">← 이전</button>
+    <button class="btn primary" id="nx" type="button">다음 →</button>
+    <div class="steps" id="steps"></div>
+  </section>
+
+  <section class="panel">
+    <div class="sum">
+      <div class="r"><strong>준비 (0)</strong>CubeMX 설정대로 경비원(EXTI)을 세우고 초인종 스위치(NVIC)를 켭니다.</div>
+      <div class="h"><strong>알아채기 (2~4) · 하드웨어</strong>전압이 떨어지면 깃발을 올리고 CPU 어깨를 칩니다. 코드는 한 줄도 없습니다.</div>
+      <div class="s"><strong>처리하기 (5~7) · 소프트웨어</strong>HAL이 깃발을 내리고 우리 콜백을 부른 뒤, 원래 하던 일로 돌아갑니다.</div>
+    </div>
+  </section>
+
+  <p class="foot">AI의 도움을 받아 만든 학습용 시뮬레이션입니다. 실제 칩의 동작을 단순화했으며, 5단계의 HAL 코드는 매크로를 풀어서 간단히 표현했습니다. · ← → 키로도 넘길 수 있습니다.</p>
+</div>
+<script>
+var S=[
+{p:'ready',pn:'준비',t:'0. 준비 (프로그램 시작)',w:[1,2],d:'MX_GPIO_Init()이 CubeMX에서 정한 대로 레지스터를 채웁니다. EXTICR4로 13번 경비원을 C포트에 세우고, FTSR1로 "1 → 0을 지켜봐"라고 정하고, IMR1과 NVIC로 초인종 스위치를 켭니다.',c:'MX_GPIO_Init();\n  EXTICR4 = 0x200      // 13번 경비원 → C포트(2)\n  FTSR1   = 0x2000     // 13번: 1 → 0(Falling) 감시\n  IMR1    13번 = 1     // 13번 초인종 연결\n  HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);   // 초인종 스위치 ON',v:{pin:'3.3V (1)',fpr:'0x0',cpu:'설정 중',cnt:'0',led:'꺼짐'},ch:[]},
+{p:'sw',pn:'평소',t:'1. 평소: CPU는 자기 일',w:[3],d:'CPU는 while 안에서 HAL_Delay(2000)로 바쁩니다. 버튼은 전혀 확인하지 않아요. 그동안 EXTI 회로가 따로 PC13을 계속 지켜봅니다.',c:'while (1) {\n  loop_count++;\n  HAL_Delay(2000);   // CPU는 여기서 바쁨\n}',v:{cpu:'main → HAL_Delay'},ch:['cpu']},
+{p:'hw',pn:'알아채기 · 하드웨어',t:'2. B1을 누름',w:[0],d:'B1을 누르면 PC13 넷이 GND와 이어져 전압이 3.3V에서 0V로 떨어집니다. 1 → 0으로 떨어지는 이 순간이 Falling edge예요.',c:'(코드 없음: 전기가 바뀌는 순간)',v:{pin:'0V (0)'},ch:['pin']},
+{p:'hw',pn:'알아채기 · 하드웨어',t:'3. 깃발 올림',w:[0,1],d:'EXTI 회로가 1 → 0을 바로 알아채고 FPR1의 13번 깃발을 올립니다. 코드 없이 하드웨어가 하는 일이라, CPU가 HAL_Delay 중이어도 놓치지 않아요.',c:'FPR1 = 0x2000   // 13번 비트 = 1 (Falling 감지!)',v:{fpr:'0x2000'},ch:['fpr']},
+{p:'hw',pn:'알아채기 · 하드웨어',t:'4. CPU 어깨 툭',w:[2,3],d:'NVIC가 CPU에게 알립니다. CPU는 HAL_Delay를 하던 자리를 메모해 두고, 벡터 테이블(startup 파일)에 적힌 EXTI4_15_IRQHandler로 달려갑니다.',c:'HAL_Delay 하던 자리 메모\n→ EXTI4_15_IRQHandler()   // stm32c0xx_it.c',v:{cpu:'EXTI4_15_IRQHandler'},ch:['cpu']},
+{p:'sw',pn:'처리하기 · 소프트웨어',t:'5. 깃발 내림 (HAL)',w:[3,1],d:'HAL_GPIO_EXTI_IRQHandler가 13번 깃발이 올라가 있는지 확인하고, 그 칸에 1을 써서 깃발을 내립니다. 안 내리면 이 함수만 끝없이 다시 불려 main으로 돌아가지 못해요.',c:'HAL_GPIO_EXTI_IRQHandler(B1_Pin);\n  if (EXTI->FPR1 & B1_Pin)   // 깃발 확인\n    EXTI->FPR1 = B1_Pin;     // 1을 써서 깃발 내림\n    HAL_GPIO_EXTI_Falling_Callback(B1_Pin);',v:{fpr:'0x0',cpu:'HAL_GPIO_EXTI_IRQHandler'},ch:['fpr','cpu']},
+{p:'sw',pn:'처리하기 · 소프트웨어',t:'6. 우리 코드 실행',w:[3,4],d:'HAL이 우리가 쓴 콜백 함수를 부릅니다. press_count를 올리고 LED를 토글해요. 8단계 중 우리가 직접 쓴 코드는 여기뿐입니다.',c:'void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {\n  if (GPIO_Pin == B1_Pin) {\n    press_count++;\n    HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);\n  }\n}',v:{cpu:'Falling_Callback',cnt:'1',led:'켜짐'},ch:['cpu','cnt','led']},
+{p:'sw',pn:'처리하기 · 소프트웨어',t:'7. 원래 일로 돌아가기',w:[3],d:'콜백이 끝나면 CPU는 메모해 둔 HAL_Delay 자리로 돌아가 하던 일을 이어서 합니다. 버튼을 떼면 PC13은 다시 3.3V가 되지만, Falling(1 → 0)만 지켜보므로 깃발은 올라가지 않아요.',c:'← HAL_Delay(2000) 이어서 실행\n   (다음 버튼을 기다림)',v:{pin:'3.3V (1)',cpu:'main → HAL_Delay'},ch:['cpu','pin']}
+];
+var K=['pin','fpr','cpu','cnt','led'],L={pin:'PC13 전압',fpr:'FPR1 깃발',cpu:'CPU 위치',cnt:'press_count',led:'LD4'},i=0;
+var stepsEl=document.getElementById('steps');
+S.forEach(function(s,j){var b=document.createElement('button');b.type='button';b.textContent=j;b.setAttribute('aria-label',s.t);b.onclick=function(){i=j;render()};stepsEl.appendChild(b)});
+function state(n){var v={};for(var k=0;k<=n;k++)for(var x in S[k].v)v[x]=S[k].v[x];return v}
+function render(){
+  var s=S[i],v=state(i);
+  var ph=document.getElementById('phase');ph.textContent=s.pn;ph.className='phase '+s.p;
+  document.getElementById('ttl').textContent=s.t;
+  document.getElementById('dsc').textContent=s.d;
+  document.getElementById('cd').textContent=s.c;
+  for(var b=0;b<5;b++)document.getElementById('p'+b).classList.toggle('on',s.w.indexOf(b)>=0);
+  K.forEach(function(k){var e=document.getElementById('c_'+k);e.innerHTML='';e.appendChild(document.createTextNode(L[k]));var bb=document.createElement('b');bb.textContent=v[k];e.appendChild(bb);e.classList.toggle('chg',s.ch.indexOf(k)>=0)});
+  document.getElementById('ledc').classList.toggle('ledon',v.led==='켜짐');
+  Array.prototype.forEach.call(stepsEl.children,function(b,j){if(j===i)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current')});
+  document.getElementById('pv').disabled=i===0;
+  document.getElementById('nx').textContent=i===S.length-1?'처음으로 ↺':'다음 →';
+}
+document.getElementById('pv').onclick=function(){if(i>0){i--;render()}};
+document.getElementById('nx').onclick=function(){i=(i+1)%S.length;render()};
+document.addEventListener('keydown',function(e){if(e.key==='ArrowRight'){i=(i+1)%S.length;render()}else if(e.key==='ArrowLeft'&&i>0){i--;render()}});
+render();
+</script>
+</body>
+</html>
