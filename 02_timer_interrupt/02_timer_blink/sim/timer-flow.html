@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>타이머 흐름 실험실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+:root{
+  --bg:#EEF3F5; --panel:#FFFFFF; --fg:#16222C; --muted:#5A6B77; --line:#CCD7DE; --chip:#E4ECF0;
+  --hw:#2B78C9; --hwbg:#E3EEFA; --sw:#1F9A6B; --swbg:#E1F4EC; --act:#E0702A; --actbg:#FCE9DC;
+  --chg:#FFF1C2; --chgline:#E0B12A; --led:#22A856; --glow:#7EF0A6;
+  --f-display:"Jua","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E161C; --panel:#152029; --fg:#E3EBF0; --muted:#8FA2AF; --line:#2A3B47; --chip:#1E2C37;
+  --hw:#5FA6EE; --hwbg:#16293B; --sw:#3CC48F; --swbg:#13302A; --act:#F08A45; --actbg:#3A2416;
+  --chg:#3A3214; --chgline:#F2C94C; --led:#34D97A; --glow:#9CFFC0; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0E161C; --panel:#152029; --fg:#E3EBF0; --muted:#8FA2AF; --line:#2A3B47; --chip:#1E2C37;
+  --hw:#5FA6EE; --hwbg:#16293B; --sw:#3CC48F; --swbg:#13302A; --act:#F08A45; --actbg:#3A2416;
+  --chg:#3A3214; --chgline:#F2C94C; --led:#34D97A; --glow:#9CFFC0; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:960px;margin:0 auto;padding-block:26px 44px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,38px);margin:0;line-height:1.15}
+h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
+.lead{margin:6px 0 0;color:var(--muted);max-width:68ch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.parts{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:6px}
+.part{background:var(--chip);border:1.5px solid var(--line);border-radius:12px;padding:14px 6px;text-align:center;min-width:0;transition:background .25s,border-color .25s}
+.part strong{display:flex;justify-content:center;align-items:center;gap:8px;font-size:17px}
+.part .sub{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.part.hw.on{background:var(--hwbg);border:3px solid var(--hw);padding:12.5px 4.5px}
+.part.sw.on{background:var(--swbg);border:3px solid var(--sw);padding:12.5px 4.5px}
+.part.hw.on .sub{color:var(--hw)} .part.sw.on .sub{color:var(--sw)}
+.arrow::before{content:"→";color:var(--muted);font-size:20px}
+.led{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid var(--muted);background:var(--panel)}
+.led.ledon{background:var(--led);border-color:var(--led);box-shadow:0 0 10px var(--glow)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-top:8px}
+.sw-dot{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.phase{display:inline-block;font-size:13px;font-weight:600;border-radius:999px;padding:2px 10px;margin-bottom:6px}
+.phase.hw{background:var(--hwbg);color:var(--hw)} .phase.sw{background:var(--swbg);color:var(--sw)} .phase.ready{background:var(--chip);color:var(--muted)}
+.desc{margin:6px 0 10px;font-size:16px}
+.code{font-family:var(--f-mono);font-size:13.5px;background:var(--chip);border-radius:10px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.state{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.cell{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;color:var(--muted);transition:background .25s,border-color .25s;min-width:0}
+.cell b{display:block;color:var(--fg);font-size:15px;font-weight:600;margin-top:2px;overflow-wrap:anywhere}
+.cell.chg{background:var(--chg);border-color:var(--chgline)}
+.nav{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-weight:600;font-size:14px;border:1px solid var(--line);background:var(--chip);color:var(--fg);border-radius:10px;padding:8px 14px;cursor:pointer}
+.btn.primary{background:var(--fg);color:var(--panel);border-color:var(--fg)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:focus-visible{outline:3px solid var(--hw);outline-offset:2px}
+.steps{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.steps button{font:inherit;font-size:13px;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
+.steps button[aria-current="step"]{background:var(--act);border-color:var(--act);color:#fff}
+.sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.sum div{border-radius:10px;padding:10px 12px;font-size:14px}
+.sum .r{background:var(--chip)} .sum .h{background:var(--hwbg)} .sum .s{background:var(--swbg)}
+.sum strong{display:block;font-size:15px}
+.cntbar{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);margin-bottom:10px}
+.cntbar .track{flex:1;height:12px;border-radius:6px;background:var(--chip);overflow:hidden}
+.cntbar i{display:block;height:100%;width:0;background:var(--hw);transition:width .45s}
+.foot{font-size:13px;color:var(--muted)}
+@media (max-width:640px){.parts{grid-template-columns:1fr}.arrow{text-align:center;line-height:1}.arrow::before{content:"↓"}.state{grid-template-columns:repeat(2,minmax(0,1fr))}.sum{grid-template-columns:1fr}.steps{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>타이머 흐름 실험실</h1>
+    <p class="lead">NUCLEO-C031C6의 TIM3가 혼자 숫자를 세다가 0.5초마다 인터럽트를 일으켜 LED를 바꾸는 과정을 8단계로 넘겨 봅니다. 단계마다 <b>어느 부품이 일하는지</b>, <b>어떤 값이 바뀌는지</b>, 그리고 <b>CNT 막대</b>가 어떻게 차오르는지 확인하세요.</p>
+  </header>
+
+  <section class="panel" aria-label="부품 흐름">
+    <div class="parts" role="img" aria-label="클럭, TIM3, NVIC, CPU, LD4 순서로 이어진 타이머 인터럽트 부품">
+      <div class="part hw" id="p0"><strong>클럭</strong><span class="sub">1초에 1200만 번 똑딱</span></div>
+      <div class="arrow" aria-hidden="true"></div>
+      <div class="part hw" id="p1"><strong>TIM3</strong><span class="sub">PSC · CNT · ARR · 깃발(UIF)</span></div>
+      <div class="arrow" aria-hidden="true"></div>
+      <div class="part hw" id="p2"><strong>NVIC</strong><span class="sub">CPU 어깨 툭</span></div>
+      <div class="arrow" aria-hidden="true"></div>
+      <div class="part sw" id="p3"><strong>CPU</strong><span class="sub">코드 실행</span></div>
+      <div class="arrow" aria-hidden="true"></div>
+      <div class="part sw" id="p4"><strong><span class="led" id="ledc"></span>LD4</strong><span class="sub">초록 LED</span></div>
+    </div>
+    <div class="legend">
+      <span><span class="sw-dot" style="background:var(--hw)"></span>파란 테두리 = 하드웨어가 일하는 중</span>
+      <span><span class="sw-dot" style="background:var(--sw)"></span>초록 테두리 = 코드(소프트웨어)가 일하는 중</span>
+      <span><span class="sw-dot" style="background:var(--chgline)"></span>노란 칸 = 이번 단계에서 바뀐 값</span>
+    </div>
+  </section>
+
+  <section class="panel" aria-live="polite">
+    <span class="phase ready" id="phase">준비</span>
+    <h2 id="ttl">0. 준비 (프로그램 시작)</h2>
+    <p class="desc" id="dsc"></p>
+    <pre class="code" id="cd"></pre>
+  </section>
+
+  <section class="panel" aria-label="현재 값">
+    <div class="cntbar" aria-hidden="true"><span>CNT</span><div class="track"><i id="bar"></i></div><span>ARR = 499</span></div>
+    <div class="state">
+      <div class="cell" id="c_cnt"></div>
+      <div class="cell" id="c_uif"></div>
+      <div class="cell" id="c_cpu"></div>
+      <div class="cell" id="c_tick"></div>
+      <div class="cell" id="c_led"></div>
+    </div>
+  </section>
+
+  <section class="nav" aria-label="단계 이동">
+    <button class="btn" id="pv" type="button">← 이전</button>
+    <button class="btn primary" id="nx" type="button">다음 →</button>
+    <div class="steps" id="steps"></div>
+  </section>
+
+  <section class="panel">
+    <div class="sum">
+      <div class="r"><strong>준비 (0)</strong>PSC·ARR에 숫자를 넣고, UIE(초인종 연결)와 CEN(세기 시작) 스위치를 켭니다.</div>
+      <div class="h"><strong>세고 알리기 (1~4) · 하드웨어</strong>1ms마다 CNT를 올리다 499를 넘으면 UIF 깃발을 올리고 CPU 어깨를 칩니다. 코드는 한 줄도 없습니다.</div>
+      <div class="s"><strong>처리하기 (5~7) · 소프트웨어</strong>HAL이 깃발을 내리고 우리 콜백을 부른 뒤 돌아갑니다. 0.5초마다 2단계부터 반복됩니다.</div>
+    </div>
+  </section>
+
+  <p class="foot">AI의 도움을 받아 만든 학습용 시뮬레이션입니다. 실제 칩의 동작을 단순화했으며, 5단계의 HAL 코드는 매크로를 풀어서 간단히 표현했습니다. 7단계 다음은 2단계로 돌아가 반복됩니다. · ← → 키로도 넘길 수 있습니다.</p>
+</div>
+<script>
+var S=[
+{p:'ready',pn:'준비',t:'0. 준비 (프로그램 시작)',w:[1,2],d:'MX_TIM3_Init()이 CubeMX에서 정한 숫자를 PSC와 ARR에 넣고, HAL_TIM_Base_Start_IT()가 두 스위치를 켭니다. UIE는 "다 세면 초인종도 울려", CEN은 "세기 시작!"이에요.',c:'MX_TIM3_Init();\n  PSC = 12000 - 1      // 12000번 똑딱마다 한 칸 (= 1ms)\n  ARR = 500 - 1        // 500칸 세면 처음으로 (= 0.5초)\nHAL_TIM_Base_Start_IT(&htim3);\n  DIER |= UIE          // 초인종 연결\n  CR1  |= CEN          // 세기 시작',v:{cnt:'0',uif:'0',cpu:'설정 중',tick:'0',led:'꺼짐'},ch:[],bar:0},
+{p:'hw',pn:'세기 · 하드웨어',t:'1. 혼자 세기',w:[0,1],d:'클럭이 1초에 1200만 번 똑딱하고, PSC 덕분에 12000번마다 CNT가 1씩 올라갑니다. 한 칸이 1ms예요. CPU는 텅 빈 while을 돌 뿐 세는 일에 전혀 관여하지 않아요.',c:'while (1) { }          // CPU는 아무것도 안 함\nCNT: 0 → 1 → 2 → ... → 262 → ...   (1ms마다 +1)',v:{cnt:'262',cpu:'main (while)'},ch:['cnt','cpu'],bar:52},
+{p:'hw',pn:'세기 · 하드웨어',t:'2. 끝 숫자에 닿음',w:[1],d:'CNT가 ARR(499)까지 오면 다음 칸에서 0으로 돌아갑니다. 500칸 × 1ms = 0.5초가 지난 순간이에요. 이 순간을 업데이트(넘침)라고 해요.',c:'CNT: 498 → 499 → 0     // ARR에 닿고 처음으로',v:{cnt:'499 → 0'},ch:['cnt'],bar:100},
+{p:'hw',pn:'알리기 · 하드웨어',t:'3. 깃발 올림',w:[1],d:'넘치는 순간 타이머가 SR의 UIF 깃발을 올립니다. 코드 없이 하드웨어가 해요. CNT는 쉬지 않고 바로 다음 바퀴를 세기 시작합니다.',c:'SR.UIF = 1             // "다 셌다!"\nCNT: 0 → 1 → 2 ...      // 다음 바퀴 시작',v:{uif:'1',cnt:'0 → 1 ...'},ch:['uif','cnt'],bar:1},
+{p:'hw',pn:'알리기 · 하드웨어',t:'4. CPU 어깨 툭',w:[1,2,3],d:'DIER의 UIE 스위치가 켜져 있으니 NVIC가 CPU에 알립니다. CPU는 하던 자리를 메모해 두고, 벡터 테이블에 적힌 TIM3_IRQHandler로 갑니다.',c:'UIF = 1 이고 UIE = 1  →  NVIC  →  CPU\n→ TIM3_IRQHandler()      // stm32c0xx_it.c',v:{cpu:'TIM3_IRQHandler'},ch:['cpu'],bar:4},
+{p:'sw',pn:'처리하기 · 소프트웨어',t:'5. 깃발 내림 (HAL)',w:[3,1],d:'HAL_TIM_IRQHandler가 UIF 깃발과 UIE 스위치를 확인하고, SR에 ~UIF를 써서 UIF만 내립니다. SR은 0을 쓴 칸만 내려가는 규칙이라 다른 깃발은 그대로예요.',c:'HAL_TIM_IRQHandler(&htim3);\n  if ((SR & UIF) && (DIER & UIE))\n    SR = ~UIF;           // UIF만 0으로 (1을 쓴 칸은 그대로)\n    HAL_TIM_PeriodElapsedCallback(&htim3);',v:{uif:'0',cpu:'HAL_TIM_IRQHandler'},ch:['uif','cpu'],bar:6},
+{p:'sw',pn:'처리하기 · 소프트웨어',t:'6. 우리 코드 실행',w:[3,4],d:'HAL이 우리가 쓴 콜백 함수를 부릅니다. tick_count를 올리고 LED를 토글해요. 8단계 중 우리가 직접 쓴 코드는 여기뿐입니다.',c:'void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {\n  if (htim->Instance == TIM3) {\n    tick_count++;\n    HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);\n  }\n}',v:{cpu:'PeriodElapsedCallback',tick:'1',led:'켜짐'},ch:['cpu','tick','led'],bar:8},
+{p:'sw',pn:'처리하기 · 소프트웨어',t:'7. 돌아가기, 그리고 반복',w:[3,1],d:'CPU는 메모해 둔 while 자리로 돌아갑니다. 그동안에도 타이머는 계속 세고 있었어요. 0.5초 뒤 CNT가 다시 499에 닿으면 2단계부터 똑같이 반복됩니다.',c:'← main (while) 으로 복귀\n   0.5초마다 2 → 3 → 4 → 5 → 6 → 7 반복',v:{cpu:'main (while)'},ch:['cpu'],bar:12}
+];
+var K=['cnt','uif','cpu','tick','led'],L={cnt:'CNT (지금 숫자)',uif:'SR.UIF 깃발',cpu:'CPU 위치',tick:'tick_count',led:'LD4'},i=0;
+var stepsEl=document.getElementById('steps');
+S.forEach(function(s,j){var b=document.createElement('button');b.type='button';b.textContent=j;b.setAttribute('aria-label',s.t);b.onclick=function(){i=j;render()};stepsEl.appendChild(b)});
+function state(n){var v={};for(var k=0;k<=n;k++)for(var x in S[k].v)v[x]=S[k].v[x];return v}
+function render(){
+  var s=S[i],v=state(i);
+  var ph=document.getElementById('phase');ph.textContent=s.pn;ph.className='phase '+s.p;
+  document.getElementById('ttl').textContent=s.t;
+  document.getElementById('dsc').textContent=s.d;
+  document.getElementById('cd').textContent=s.c;
+  for(var b=0;b<5;b++)document.getElementById('p'+b).classList.toggle('on',s.w.indexOf(b)>=0);
+  K.forEach(function(k){var e=document.getElementById('c_'+k);e.innerHTML='';e.appendChild(document.createTextNode(L[k]));var bb=document.createElement('b');bb.textContent=v[k];e.appendChild(bb);e.classList.toggle('chg',s.ch.indexOf(k)>=0)});
+  document.getElementById('ledc').classList.toggle('ledon',v.led==='켜짐');
+  document.getElementById('bar').style.width=s.bar+'%';
+  Array.prototype.forEach.call(stepsEl.children,function(b,j){if(j===i)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current')});
+  document.getElementById('pv').disabled=i===0;
+  document.getElementById('nx').textContent=i===S.length-1?'2단계로 반복 ↺':'다음 →';
+}
+document.getElementById('pv').onclick=function(){if(i>0){i--;render()}};
+document.getElementById('nx').onclick=function(){i=(i===S.length-1)?2:i+1;render()};
+document.addEventListener('keydown',function(e){if(e.key==='ArrowRight'){i=(i===S.length-1)?2:i+1;render()}else if(e.key==='ArrowLeft'&&i>0){i--;render()}});
+render();
+</script>
+</body>
+</html>
