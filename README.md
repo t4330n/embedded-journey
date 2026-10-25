@@ -47,7 +47,7 @@
 | 0 | 기초 | [보드 회로도 확인](./docs/basics/04_board_schematic.md) | `보드 회로도` `B1 풀업 저항` `LD4` `트랜지스터` | ✅ |
 | 1 | GPIO | [버튼 토글 & 디바운싱](./01_gpio/03_button_toggle) | `엣지 검출` `바운싱` `디바운싱` `HAL_GetTick` `Live Expressions` | ✅ |
 | 2 | Timer / Interrupt | [외부 인터럽트(EXTI)로 버튼 처리](./02_timer_interrupt/01_exti_button) | `EXTI` `NVIC` `폴링 vs 인터럽트` `콜백` `FPR1` | ✅ |
-| 2 | Timer / Interrupt | 타이머로 LED 주기 제어 | | ⬜ |
+| 2 | Timer / Interrupt | [타이머 인터럽트로 LED 깜빡이기](./02_timer_interrupt/02_timer_blink) | `TIM` `PSC·ARR` `주기 계산` `업데이트 인터럽트` `UIF` | ✅ |
 | 3 | UART | PC와 시리얼 통신, printf 디버깅 | | ⬜ |
 | 4 | I2C / SPI | 온도 센서 읽기, 디스플레이 출력 | | ⬜ |
 | 5 | ADC / PWM | 가변저항 읽기, LED 밝기 제어 | | ⬜ |
@@ -82,7 +82,8 @@ embedded-journey/
 │   ├── 02_button_led/
 │   └── 03_button_toggle/
 ├── 02_timer_interrupt/
-│   └── 01_exti_button/          #   sim/: 인터럽트 흐름 시뮬레이션
+│   ├── 01_exti_button/          #   sim/: 인터럽트 흐름 시뮬레이션
+│   └── 02_timer_blink/          #   sim/: 타이머 흐름 시뮬레이션
 ├── 03_uart/
 ├── 04_i2c_spi/
 ├── 05_adc_pwm/
@@ -132,6 +133,8 @@ embedded-journey/
 - **폴링**은 소프트웨어가 직접 확인해서 입력을 알아채고, **인터럽트**는 하드웨어(EXTI·NVIC)가 알아채서 콜백 함수를 불러 준다. CPU가 다른 일로 바빠도 입력을 놓치지 않는다.
 - 인터럽트 핸들러는 감지 깃발(FPR1)을 지워야 하며, 지우지 않으면 핸들러가 끝없이 다시 실행된다. HAL은 깃발을 지운 뒤 콜백을 호출한다.
 - STM32C0 HAL의 EXTI 콜백은 `HAL_GPIO_EXTI_Falling_Callback` / `Rising_Callback`으로 나뉘어 있다.
+- **타이머**는 CPU와 별개로 숫자를 세는 하드웨어로, 주기 = (PSC + 1) × (ARR + 1) ÷ 타이머 클럭이다. 실무에서는 PSC로 1ms·1µs처럼 딱 떨어지는 눈금을 만들고 ARR로 칸 수를 정한다.
+- EXTI와 타이머 인터럽트는 "깃발 → NVIC → 핸들러 → HAL이 깃발 정리 → 콜백"이라는 같은 흐름이며, 깃발을 지우는 방식(EXTI `FPR1`은 1을 써서, TIM `SR`은 0을 써서)은 레지스터마다 다르다.
 
 **개발 도구**
 - 보드(Board Selector)가 아닌 칩(MCU Selector) 단위로 프로젝트를 만들어야 BSP의 점유 없이 핀을 직접 설정할 수 있다.
@@ -159,3 +162,4 @@ embedded-journey/
 | 11 | 03_button_toggle | [Run으로 실행하면 Live Expressions에서 변수 값을 볼 수 없음](./docs/troubleshooting.md#11-run으로-실행하면-live-expressions에서-변수-값을-볼-수-없음) |
 | 12 | 01_exti_button | [CPU가 바쁠 때 폴링으로 짧게 누른 버튼을 놓침](./docs/troubleshooting.md#12-cpu가-바쁠-때-폴링으로-짧게-누른-버튼을-놓침) |
 | 13 | 01_exti_button | [인터럽트는 값이 바뀐 것을 언제 어떻게 확인하는지 이해되지 않음](./docs/troubleshooting.md#13-인터럽트는-값이-바뀐-것을-언제-어떻게-확인하는지-이해되지-않음) |
+| 14 | 02_timer_blink | [타이머 설정(PSC·ARR)의 의미와 값을 정하는 기준을 이해하지 못함](./docs/troubleshooting.md#14-타이머-설정pscarr의-의미와-값을-정하는-기준을-이해하지-못함) |
