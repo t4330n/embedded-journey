@@ -48,7 +48,7 @@
 | 1 | GPIO | [버튼 토글 & 디바운싱](./01_gpio/03_button_toggle) | `엣지 검출` `바운싱` `디바운싱` `HAL_GetTick` `Live Expressions` | ✅ |
 | 2 | Timer / Interrupt | [외부 인터럽트(EXTI)로 버튼 처리](./02_timer_interrupt/01_exti_button) | `EXTI` `NVIC` `폴링 vs 인터럽트` `콜백` `FPR1` | ✅ |
 | 2 | Timer / Interrupt | [타이머 인터럽트로 LED 깜빡이기](./02_timer_interrupt/02_timer_blink) | `TIM` `PSC·ARR` `주기 계산` `업데이트 인터럽트` `UIF` | ✅ |
-| 3 | UART | PC와 시리얼 통신, printf 디버깅 | | ⬜ |
+| 3 | UART | [PC와 시리얼 통신, printf, 인터럽트 받기](./03_uart/01_uart_hello) | `UART` `보드레이트` `printf 리다이렉트` `TXE·RXNE` `Receive_IT` | ✅ |
 | 4 | I2C / SPI | 온도 센서 읽기, 디스플레이 출력 | | ⬜ |
 | 5 | ADC / PWM | 가변저항 읽기, LED 밝기 제어 | | ⬜ |
 | 6 | RTOS | FreeRTOS 태스크 분리 | | ⬜ |
@@ -85,6 +85,7 @@ embedded-journey/
 │   ├── 01_exti_button/          #   sim/: 인터럽트 흐름 시뮬레이션
 │   └── 02_timer_blink/          #   sim/: 타이머 흐름 시뮬레이션
 ├── 03_uart/
+│   └── 01_uart_hello/           #   sim/: UART 받기 흐름 시뮬레이션
 ├── 04_i2c_spi/
 ├── 05_adc_pwm/
 ├── 06_rtos/
@@ -136,6 +137,11 @@ embedded-journey/
 - **타이머**는 CPU와 별개로 숫자를 세는 하드웨어로, 주기 = (PSC + 1) × (ARR + 1) ÷ 타이머 클럭이다. 실무에서는 PSC로 1ms·1µs처럼 딱 떨어지는 눈금을 만들고 ARR로 칸 수를 정한다.
 - EXTI와 타이머 인터럽트는 "깃발 → NVIC → 핸들러 → HAL이 깃발 정리 → 콜백"이라는 같은 흐름이며, 깃발을 지우는 방식(EXTI `FPR1`은 1을 써서, TIM `SR`은 0을 써서)은 레지스터마다 다르다.
 
+**UART**
+- UART는 TX·RX 두 선으로 약속한 속도(보드레이트)에 맞춰 1과 0을 차례로 보내는 통신이며, 양쪽 속도가 다르면 글자가 깨진다. 8N1에서 글자 하나는 10비트다.
+- `__io_putchar`를 구현하면 `printf`가 UART로 출력되어 실행 중인 값을 PC에서 확인할 수 있다. 단, 블로킹 동작이라 인터럽트 콜백에서는 쓰지 않는다.
+- `HAL_UART_Receive_IT`는 정한 글자 수만 받는 일회성 요청이므로, 계속 받으려면 콜백에서 다시 요청해야 한다.
+
 **개발 도구**
 - 보드(Board Selector)가 아닌 칩(MCU Selector) 단위로 프로젝트를 만들어야 BSP의 점유 없이 핀을 직접 설정할 수 있다.
 - 디버거의 **SFRs 창**으로 레지스터 값을 직접 관찰하면, 코드만 읽어서는 이해하기 어려운 동작도 빠르게 확인할 수 있다.
@@ -163,3 +169,5 @@ embedded-journey/
 | 12 | 01_exti_button | [CPU가 바쁠 때 폴링으로 짧게 누른 버튼을 놓침](./docs/troubleshooting.md#12-cpu가-바쁠-때-폴링으로-짧게-누른-버튼을-놓침) |
 | 13 | 01_exti_button | [인터럽트는 값이 바뀐 것을 언제 어떻게 확인하는지 이해되지 않음](./docs/troubleshooting.md#13-인터럽트는-값이-바뀐-것을-언제-어떻게-확인하는지-이해되지-않음) |
 | 14 | 02_timer_blink | [타이머 설정(PSC·ARR)의 의미와 값을 정하는 기준을 이해하지 못함](./docs/troubleshooting.md#14-타이머-설정pscarr의-의미와-값을-정하는-기준을-이해하지-못함) |
+| 15 | 01_uart_hello | [screen 실행 직후 screen is terminating이 뜨고 바로 종료됨](./docs/troubleshooting.md#15-screen-실행-직후-screen-is-terminating이-뜨고-바로-종료됨) |
+| 16 | 01_uart_hello | [UART 수신 콜백에서 다시 걸기를 빼면 첫 글자만 받음](./docs/troubleshooting.md#16-uart-수신-콜백에서-다시-걸기를-빼면-첫-글자만-받음) |
